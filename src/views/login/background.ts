@@ -23,7 +23,8 @@ export function debounce<F extends (...args: any[]) => any>(
 
 export const initBackground = () => {
   const fontSizeMultiplier = 10
-  let setIntervalId: number | null = null
+  let setIntervalId: ReturnType<typeof setInterval> | null = null
+  let isUnmounted = false
 
   const fontColors = [
     '#33B5E5',
@@ -60,8 +61,9 @@ export const initBackground = () => {
   }
 
   const initCodeRain = debounce(() => {
+    if (isUnmounted) return
     if (setIntervalId) {
-      cancelAnimationFrame(setIntervalId)
+      clearInterval(setIntervalId)
     }
     const cvs = document.getElementById('cvs') as HTMLCanvasElement
     if (!cvs) return
@@ -77,59 +79,40 @@ export const initBackground = () => {
     const columnWidth = fontSize
     const columnCount = Math.floor(width / columnWidth)
 
-    // 让每列拥有各自不同的下落速度和初始位置
-    const columns = Array.from({ length: columnCount }, () => ({
-      x: 0,
-      y: Math.random() * height,
-      speed: Math.random() * 2 + 1, // 控制每列额外的下落步长
-    }))
+    const nextCharIndexInColumn = new Array(columnCount).fill(0)
 
-    // 绘制上一帧的残影，使用固定的绘制循环来控制透明度
-    let lastTime = 0
-    const fps = 30 // 控制逻辑帧在 30 帧左右，动画用 requestAnimationFrame
-
-    const draw = (timestamp: number) => {
-      // 动画请求下一帧
-      setIntervalId = requestAnimationFrame(draw)
-
-      // 距离上一次渲染控制的时间间隔，不用太快以防残影消失得太迅速
-      if (timestamp - lastTime < 1000 / fps) return
-      lastTime = timestamp
-
-      // 绘制带透明度的背景填充，形成轨迹拖影
+    const draw = () => {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
       ctx.fillRect(0, 0, width, height)
 
-      ctx.font = `${fontSize}px 'Monaco', monospace`
-
       for (let i = 0; i < columnCount; i++) {
-        const col = columns[i]
         const randomChar = getRandomChar()
-        col.x = i * columnWidth
+        const xPosition = i * columnWidth
+        const yPosition = (nextCharIndexInColumn[i] + 1) * fontSize
 
-        const opacityFactor = col.y / height < 0.2 ? col.y / (height * 0.2) : 1
+        const opacityFactor = yPosition / height < 0.2 ? yPosition / (height * 0.2) : 1
+
         ctx.fillStyle = changeAlpha(getRandomColor(), opacityFactor)
+        ctx.font = `${fontSize}px 'Monaco', monospace`
+        ctx.fillText(randomChar, xPosition, yPosition)
 
-        ctx.fillText(randomChar, col.x, col.y)
-
-        // 让字符向下掉落，如果超出屏幕或者随机出现，则将其复位到顶部
-        if (col.y > height && Math.random() > 0.98) {
-          col.y = 0
+        if (yPosition > height && Math.random() > 0.99) {
+          nextCharIndexInColumn[i] = 0
         } else {
-          // 根据自身的 speed 属性来决定下落快慢
-          col.y += fontSize * 0.4 * col.speed // 减缓整体掉落速度，并附加列级缓动
+          nextCharIndexInColumn[i]++
         }
       }
     }
 
-    setIntervalId = requestAnimationFrame(draw)
+    setIntervalId = setInterval(draw, 100)
   }, 300)
 
   initCodeRain()
   window.addEventListener('resize', initCodeRain)
 
   return () => {
-    if (setIntervalId) cancelAnimationFrame(setIntervalId)
+    isUnmounted = true
+    if (setIntervalId) clearInterval(setIntervalId)
     window.removeEventListener('resize', initCodeRain)
   }
 }
