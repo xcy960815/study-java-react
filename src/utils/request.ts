@@ -17,6 +17,11 @@ interface RetryRequestConfig extends InternalAxiosRequestConfig {
 }
 
 axios.defaults.withCredentials = false
+
+/**
+ * 带有拦截器及 Token 刷新处理机制的全局 Axios 实例。
+ * 用于业务代码侧发起 Restful API 请求。
+ */
 const request = axios.create({
   baseURL: baseUrl,
   timeout: 60 * 1000 * 10,

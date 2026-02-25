@@ -1,6 +1,11 @@
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
 const PREFIX = 'data:image/svg+xml;base64,'
 
+/**
+ * UTF-8 编码处理
+ * @param {string} input 需要编码的字符串
+ * @returns {string} 编码后的字符串
+ */
 export const utf8Encode = (input: string): string => {
   input = input.replace(/\r\n/g, '\n')
 
@@ -24,6 +29,11 @@ export const utf8Encode = (input: string): string => {
   return output
 }
 
+/**
+ * Base64 核心编码转换
+ * @param {string} input 需要转换的字符串
+ * @returns {string} Base64 字符串
+ */
 export const encode = (input: string): string => {
   let i = 0
   let chr1: number
@@ -60,6 +70,11 @@ export const encode = (input: string): string => {
   return output
 }
 
+/**
+ * 检测输入的数据类型
+ * @param {string | SVGElement} input 输入内容（字符串或 SVG DOM 节点）
+ * @returns {'string' | 'element' | void} 检测所得类型 ('string', 'element' 或者是 undefined)
+ */
 export const detectInputType = (input: string | SVGElement): 'string' | 'element' | void => {
   if (typeof input === 'string') {
     return 'string'
@@ -70,11 +85,26 @@ export const detectInputType = (input: string | SVGElement): 'string' | 'element
   }
 }
 
+/**
+ * 拼接 Base64 头部生成完整的 Data URL
+ * @param {string} input 原始字符串
+ * @returns {string} 带有 base64 前缀的链接文本
+ */
 export const getBase64 = (input: string) => PREFIX + encode(input)
 
+/**
+ * 将 SVG 元素序列化并转为 Base64 格式
+ * @param {SVGElement} input Web SVG 节点
+ * @returns {string} 可用的图片格式 Base64 链接
+ */
 export const convertElement = (input: SVGElement): string =>
   getBase64(new XMLSerializer().serializeToString(input))
 
+/**
+ * 通用的 SVG 转 Base64 导出函数
+ * @param {string | SVGElement} input 字符串模版或 DOM 元素 (如 React/Vue 通过 render 获取的 svg)
+ * @returns {string} 包含前缀的 Base64 格式图像链接，可直接供 href/src 使用
+ */
 export const svg2base64 = (input: string | SVGElement): string => {
   const type = detectInputType(input)
 

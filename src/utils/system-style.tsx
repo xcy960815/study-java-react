@@ -4,6 +4,7 @@ import { svg2base64 } from './svg2base64'
 
 /**
  * 修改浏览器标签页标题
+ * @param {string} title 新的页面标题
  */
 export const changeTabTitle = (title: string): void => {
   document.title = title
@@ -11,6 +12,7 @@ export const changeTabTitle = (title: string): void => {
 
 /**
  * 设置浏览器标签页图标
+ * @param {string} iconPath 图标的链接路径（支持 base64）
  */
 export const setTabIcon = (iconPath: string): void => {
   if (!iconPath) return
@@ -30,6 +32,7 @@ export const setTabIcon = (iconPath: string): void => {
 
 /**
  * 根据路由更新标签页图标
+ * @param {string} iconName 来自 IconPark 的图标名称
  */
 export const changeTabIcon = (iconName: string): void => {
   const IconComponent = iconPark[iconName as keyof typeof iconPark] || iconPark.System
