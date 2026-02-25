@@ -1,0 +1,41 @@
+# 获取提交信息
+COMMIT_MSG=$(cat "$1")
+
+# 如果提交信息为空，则运行交互式提交
+if [ -z "$COMMIT_MSG" ]; then
+  npm run commit
+  exit 0
+fi
+
+# 检查提交信息格式
+if ! echo "$COMMIT_MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip)(\([a-z]+\))?: .+$'; then
+  echo "\n❌ 提交信息格式错误！"
+  echo "请使用以下格式提交："
+  echo "  type(scope): subject"
+  echo ""
+  echo "例如："
+  echo "  fix(user): 修复登录问题"
+  echo ""
+  echo "type 可选值："
+  echo "  ✨ feat:     新功能"
+  echo "  🐛 fix:      修复bug"
+  echo "  📚 docs:     文档更新"
+  echo "  💎 style:    代码格式调整"
+  echo "  📦 refactor: 代码重构"
+  echo "  🚀 perf:     性能优化"
+  echo "  🚨 test:     测试相关"
+  echo "  👷 build:    构建相关"
+  echo "  ⚙️  ci:       CI配置相关"
+  echo "  ♻️  chore:    构建过程或辅助工具的变动"
+  echo "  🗑  revert:   回滚"
+  echo "  🚧 wip:      开发中"
+  echo ""
+  echo "scope 可选值："
+  echo "  math, user, admin, system, config"
+  echo ""
+  echo "或者使用 npm run commit 进行交互式提交"
+  exit 1
+fi
+
+# 使用commitlint检查提交信息
+npx --no -- commitlint --edit "$1"
