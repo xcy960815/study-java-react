@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Form, Input, Select, Button, Table, Space, Tag, Modal, Popconfirm, message } from 'antd'
+import type { TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { getUserList, insertUser, updateUser, deleteUser } from '@/apis/system/user'
 import type { UserInfoVo } from '@/apis/system/user'
@@ -9,18 +10,34 @@ import type { RoleInfoVo } from '@/apis/system/role'
 const { Option } = Select
 
 const UserList: React.FC = () => {
+  // 表单
   const [searchForm] = Form.useForm()
+
+  // 弹窗表单
   const [modalForm] = Form.useForm()
 
+  // 表格数据
   const [tableData, setTableData] = useState<UserInfoVo[]>([])
+
+  // 总数
   const [total, setTotal] = useState(0)
+
+  // 加载状态
   const [loading, setLoading] = useState(false)
 
+  // 分页
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 })
+
+  // 角色列表
   const [roleList, setRoleList] = useState<RoleInfoVo[]>([])
 
+  // 弹窗状态
   const [modalVisible, setModalVisible] = useState(false)
+
+  // 弹窗标题
   const [modalTitle, setModalTitle] = useState('新增用户')
+
+  // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
   useEffect(() => {
@@ -28,6 +45,7 @@ const UserList: React.FC = () => {
     fetchUserList()
   }, [])
 
+  // 请求角色列表
   const fetchRoleList = async () => {
     try {
       const roles = await getAllRoleList()
@@ -37,6 +55,7 @@ const UserList: React.FC = () => {
     }
   }
 
+  // 请求用户列表
   const fetchUserList = async (page = pagination.current, size = pagination.pageSize) => {
     setLoading(true)
     try {
@@ -56,11 +75,13 @@ const UserList: React.FC = () => {
     }
   }
 
+  // 搜索
   const handleSearch = () => {
     fetchUserList(1, pagination.pageSize)
   }
 
-  const handleTableChange = (pag: any) => {
+  // 表格切换
+  const handleTableChange = (pag: TablePaginationConfig) => {
     fetchUserList(pag.current, pag.pageSize)
   }
 
@@ -79,6 +100,7 @@ const UserList: React.FC = () => {
     setModalVisible(true)
   }
 
+  // 删除用户
   const handleDelete = async (record: UserInfoVo) => {
     try {
       await deleteUser(record)
@@ -89,6 +111,7 @@ const UserList: React.FC = () => {
     }
   }
 
+  // 弹窗确认
   const handleModalOk = async () => {
     try {
       const values = await modalForm.validateFields()
@@ -165,7 +188,7 @@ const UserList: React.FC = () => {
   ]
 
   return (
-    <div>
+    <div className="user-page">
       <Form
         form={searchForm}
         layout="inline"
@@ -195,7 +218,7 @@ const UserList: React.FC = () => {
 
       <div className="mb-4">
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          新闻用户
+          新增用户
         </Button>
       </div>
 
