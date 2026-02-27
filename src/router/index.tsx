@@ -5,6 +5,11 @@ import UserList from '@/views/system/user/index'
 import RoleList from '@/views/system/role/index'
 import MenuList from '@/views/system/menu/index'
 import DataDictionaryList from '@/views/system/data-dictionary/index'
+import OperlogPage from '@/views/monitor/operlog/index'
+import ReportPage from '@/views/monitor/report/index'
+import ServerPage from '@/views/monitor/server/index'
+import OrderPage from '@/views/order/index'
+import GoodsPage from '@/views/goods/index'
 import { changeTabIcon } from '@/utils/system-style'
 
 /** 路由 handle 字段类型定义 */
@@ -58,8 +63,39 @@ export const layoutRoutes: RouteObject[] = [
   },
   {
     path: 'monitor',
-    element: <div>Monitor Management Placeholder</div>,
     handle: { icon: 'Monitor', title: '监控管理' },
+    children: [
+      {
+        path: 'operlog',
+        element: <OperlogPage />,
+        handle: { icon: 'FileText', title: '操作日志' },
+      },
+      {
+        path: 'server',
+        element: <ServerPage />,
+        handle: { icon: 'Line', title: '服务监控' },
+      },
+      {
+        path: 'report',
+        element: <ReportPage />,
+        handle: { icon: 'Bar', title: '经营报表' },
+      },
+      {
+        index: true,
+        element: <Navigate to="operlog" replace />,
+        handle: { hidden: true },
+      },
+    ],
+  },
+  {
+    path: 'order',
+    element: <OrderPage />,
+    handle: { icon: 'ShoppingCart', title: '订单管理' },
+  },
+  {
+    path: 'goods',
+    element: <GoodsPage />,
+    handle: { icon: 'Shop', title: '商品管理' },
   },
   {
     path: 'ollama',

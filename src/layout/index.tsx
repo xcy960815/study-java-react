@@ -11,6 +11,11 @@ import {
   MenuFoldOutlined,
   MenuOutlined,
   BookOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
+  ShoppingCartOutlined,
+  ShopOutlined,
 } from '@ant-design/icons'
 import { useLoginStore } from '@/store'
 import { layoutRoutes } from '@/router'
@@ -28,6 +33,11 @@ const iconMap: Record<string, React.ReactNode> = {
   User: <UserOutlined />,
   Menu: <MenuOutlined />,
   Book: <BookOutlined />,
+  FileText: <FileTextOutlined />,
+  Line: <LineChartOutlined />,
+  Bar: <BarChartOutlined />,
+  ShoppingCart: <ShoppingCartOutlined />,
+  Shop: <ShopOutlined />,
 }
 
 /**
