@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router-dom'
 import md5 from 'md5'
 import { useLoginStore } from '@/store'
 import { loginModule } from '@/apis'
+import type { LoginRequestDto } from '@/apis/login'
 import { initBackground } from '@/views/login/background'
+import { useWatch } from 'antd/es/form/Form'
 
 const Login: React.FC = () => {
   const [form] = Form.useForm()
@@ -17,15 +19,61 @@ const Login: React.FC = () => {
   // Zustand hook
   const { login } = useLoginStore()
 
+  // Watch form fields to determine if button should dodge
+  const usernameValue = useWatch('username', form)
+  const passwordValue = useWatch('password', form)
+  const captchaValue = useWatch('captcha', form)
+
+  const isFormIncomplete =
+    !usernameValue || !passwordValue || !captchaValue || captchaValue.length !== 4
+
   useEffect(() => {
     // Run background rain
     const cleanup = initBackground()
     handleGetCaptcha()
 
+    const button = document.querySelector('.login-btn') as HTMLElement
+    if (!button) return
+
+    const distanceBetween = (p1x: number, p1y: number, p2x: number, p2y: number) => {
+      const dx = p1x - p2x
+      const dy = p1y - p2y
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isFormIncomplete) {
+        button.style.transform = ''
+        button.style.boxShadow = ''
+        return
+      }
+
+      const radius = Math.max(button.offsetWidth * 0.75, button.offsetHeight * 0.75, 100)
+      const rect = button.getBoundingClientRect()
+      const bx = rect.left + rect.width / 2
+      const by = rect.top + rect.height / 2
+
+      const dist = distanceBetween(event.clientX, event.clientY, bx, by) * 2
+      const angle = Math.atan2(event.clientY - by, event.clientX - bx)
+
+      const ox = -1 * Math.cos(angle) * Math.max(radius - dist, 0)
+      const oy = -1 * Math.sin(angle) * Math.max(radius - dist, 0)
+
+      const rx = oy / 2
+      const ry = -ox / 2
+
+      button.style.transition = `all 0.1s ease`
+      button.style.transform = `translate(${ox}px, ${oy}px) rotateX(${rx}deg) rotateY(${ry}deg)`
+      button.style.boxShadow = `0px ${Math.abs(oy)}px ${(Math.abs(oy) / radius) * 40}px rgba(0,0,0,0.15)`
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+
     return () => {
       cleanup()
+      document.removeEventListener('mousemove', handleMouseMove)
     }
-  }, [])
+  }, [isFormIncomplete])
 
   const handleGetCaptcha = async () => {
     setCaptchaLoading(true)
@@ -39,7 +87,7 @@ const Login: React.FC = () => {
     }
   }
 
-  const handleLogin = async (values: any) => {
+  const handleLogin = async (values: LoginRequestDto) => {
     setLogining(true)
     try {
       const loginData = { ...values }
@@ -109,7 +157,13 @@ const Login: React.FC = () => {
           </Form.Item>
 
           <Form.Item className="mb-2">
-            <Button type="primary" htmlType="submit" className="w-full" loading={logining}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="w-full login-btn"
+              loading={logining}
+              disabled={isFormIncomplete}
+            >
               {logining ? '登 录 中...' : '登 录'}
             </Button>
           </Form.Item>
