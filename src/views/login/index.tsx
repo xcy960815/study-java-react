@@ -41,8 +41,13 @@ const Login: React.FC = () => {
       return Math.sqrt(dx * dx + dy * dy)
     }
 
+    let currentOx = 0
+    let currentOy = 0
+
     const handleMouseMove = (event: MouseEvent) => {
       if (!isFormIncomplete) {
+        currentOx = 0
+        currentOy = 0
         button.style.transform = ''
         button.style.boxShadow = ''
         return
@@ -50,14 +55,17 @@ const Login: React.FC = () => {
 
       const radius = Math.max(button.offsetWidth * 0.75, button.offsetHeight * 0.75, 100)
       const rect = button.getBoundingClientRect()
-      const bx = rect.left + rect.width / 2
-      const by = rect.top + rect.height / 2
+      const bx = rect.left - currentOx + rect.width / 2
+      const by = rect.top - currentOy + rect.height / 2
 
       const dist = distanceBetween(event.clientX, event.clientY, bx, by) * 2
       const angle = Math.atan2(event.clientY - by, event.clientX - bx)
 
       const ox = -1 * Math.cos(angle) * Math.max(radius - dist, 0)
       const oy = -1 * Math.sin(angle) * Math.max(radius - dist, 0)
+
+      currentOx = ox
+      currentOy = oy
 
       const rx = oy / 2
       const ry = -ox / 2
@@ -120,21 +128,15 @@ const Login: React.FC = () => {
           initialValues={{ username: '13700002703', password: '123456', rememberMe: false }}
           size="large"
         >
-          <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
+          <Form.Item name="username">
             <Input prefix={<UserOutlined />} placeholder="账号" />
           </Form.Item>
 
-          <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
+          <Form.Item name="password">
             <Input.Password prefix={<LockOutlined />} placeholder="密码" />
           </Form.Item>
 
-          <Form.Item
-            name="captcha"
-            rules={[
-              { required: true, message: '请输入验证码' },
-              { len: 4, message: '验证码长度为 4' },
-            ]}
-          >
+          <Form.Item name="captcha">
             <div className="flex gap-2">
               <Input placeholder="验证码" />
               <div
@@ -162,7 +164,6 @@ const Login: React.FC = () => {
               htmlType="submit"
               className="w-full login-btn"
               loading={logining}
-              disabled={isFormIncomplete}
             >
               {logining ? '登 录 中...' : '登 录'}
             </Button>
