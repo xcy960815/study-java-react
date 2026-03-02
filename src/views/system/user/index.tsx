@@ -80,6 +80,12 @@ const UserList: React.FC = () => {
     fetchUserList(1, pagination.pageSize)
   }
 
+  // 重置
+  const handleReset = () => {
+    searchForm.resetFields()
+    fetchUserList(1, pagination.pageSize)
+  }
+
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
     fetchUserList(pag.current, pag.pageSize)
@@ -189,16 +195,22 @@ const UserList: React.FC = () => {
 
   return (
     <div className="user-page">
-      <Form
-        form={searchForm}
-        layout="inline"
-        className="mb-4 bg-gray-50 p-4 rounded border border-gray-200"
-      >
+      <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="nickName" label="用户昵称">
-          <Input placeholder="用户昵称" onPressEnter={handleSearch} />
+          <Input
+            placeholder="请输入用户昵称"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="loginName" label="登陆账号">
-          <Input placeholder="登陆账号" onPressEnter={handleSearch} />
+          <Input
+            placeholder="请输入登陆账号"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="roleIds" label="角色">
           <Select placeholder="请选择角色" mode="multiple" style={{ width: 200 }} allowClear>
@@ -210,17 +222,20 @@ const UserList: React.FC = () => {
           </Select>
         </Form.Item>
         <Form.Item>
-          <Button type="primary" onClick={handleSearch}>
-            搜索
-          </Button>
+          <Space>
+            <Button type="primary" onClick={handleSearch}>
+              搜索
+            </Button>
+            <Button onClick={handleReset}>重置</Button>
+          </Space>
         </Form.Item>
       </Form>
 
-      <div className="mb-4">
+      <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增用户
         </Button>
-      </div>
+      </Space>
 
       <Table
         columns={columns}

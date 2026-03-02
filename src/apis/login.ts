@@ -7,6 +7,13 @@ export interface LoginRequestDto {
   rememberMe?: boolean
 }
 
+export interface RegisterRequestDto {
+  username?: string
+  password?: string
+  confirmPassword?: string
+  captcha?: string
+}
+
 export interface LoginResponseVo {
   token: string
   refreshToken: string
@@ -23,6 +30,16 @@ export function login<
 >(requestParams: D): Promise<T> {
   const url = `/login`
   return request.post<T, T>(url, requestParams)
+}
+
+/**
+ * 注册接口
+ * @param requestParams
+ * @returns
+ */
+export function register(requestParams: RegisterRequestDto): Promise<boolean> {
+  const url = `/register`
+  return request.post<boolean, boolean>(url, requestParams)
 }
 
 /**

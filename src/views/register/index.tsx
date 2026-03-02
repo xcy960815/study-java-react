@@ -1,34 +1,35 @@
 import React, { useState, useEffect } from 'react'
-import { Form, Input, Button, Checkbox } from 'antd'
+import { Form, Input, Button, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import md5 from 'md5'
-import { useLoginStore } from '@/store'
 import { loginModule } from '@/apis'
-import type { LoginRequestDto } from '@/apis/login'
+import type { RegisterRequestDto } from '@/apis/login'
 import { initBackground } from '@/views/login/background'
 
 import { useLoginButtonAnimation } from '@/hooks/useLoginButtonAnimation'
 
-const Login: React.FC = () => {
-  const [form] = Form.useForm<LoginRequestDto>()
+const Register: React.FC = () => {
+  const [form] = Form.useForm<RegisterRequestDto>()
   const navigate = useNavigate()
-  const [logining, setLogining] = useState(false)
+  const [registering, setRegistering] = useState(false)
   const [captchaUrl, setCaptchaUrl] = useState('')
   const [captchaLoading, setCaptchaLoading] = useState(false)
-
-  // Zustand hook
-  const { login } = useLoginStore()
 
   // Watch form fields to determine if button should dodge
   const usernameValue = Form.useWatch('username', form)
   const passwordValue = Form.useWatch('password', form)
+  const confirmPasswordValue = Form.useWatch('confirmPassword', form)
   const captchaValue = Form.useWatch('captcha', form)
 
   const isFormIncomplete =
-    !usernameValue || !passwordValue || !captchaValue || captchaValue.length !== 4
+    !usernameValue ||
+    !passwordValue ||
+    !confirmPasswordValue ||
+    !captchaValue ||
+    captchaValue.length !== 4
 
-  useLoginButtonAnimation(isFormIncomplete, '.login-btn')
+  useLoginButtonAnimation(isFormIncomplete, '.register-btn')
 
   useEffect(() => {
     // Run background rain
@@ -52,21 +53,30 @@ const Login: React.FC = () => {
     }
   }
 
-  const handleLogin = async (values: LoginRequestDto) => {
-    setLogining(true)
+  const handleRegister = async (values: RegisterRequestDto) => {
+    setRegistering(true)
     try {
-      const loginData = { ...values }
-      if (loginData.password) {
-        loginData.password = md5(loginData.password)
+      if (values.password !== values.confirmPassword) {
+        message.error('两次输入的密码不一致')
+        setRegistering(false)
+        return
       }
-      await login(loginData)
+
+      const registerData = { ...values }
+      if (registerData.password) {
+        registerData.password = md5(registerData.password)
+        registerData.confirmPassword = md5(registerData.confirmPassword!)
+      }
+
+      await loginModule.register(registerData)
+      message.success('注册成功，请登录')
       // redirect after success
-      navigate('/system')
+      navigate('/login')
     } catch (error) {
-      // Re-fetch captcha if login fails
+      // Re-fetch captcha if register fails
       handleGetCaptcha()
     } finally {
-      setLogining(false)
+      setRegistering(false)
     }
   }
 
@@ -74,23 +84,19 @@ const Login: React.FC = () => {
     <div className="relative flex items-center justify-center w-screen h-screen">
       <canvas className="absolute top-0 bottom-0 left-0 right-0 -z-10" id="cvs"></canvas>
       <div className="bg-white rounded p-6 w-[400px]">
-        <h3 className="text-gray-500 text-center mb-6 text-xl italic">
-          {import.meta.env.VITE_APP_TITLE || 'Study Java React'}
-        </h3>
+        <h3 className="text-gray-500 text-center mb-6 text-xl italic">用户注册</h3>
 
-        <Form
-          form={form}
-          name="loginForm"
-          onFinish={handleLogin}
-          initialValues={{ username: '13700002703', password: '123456', rememberMe: false }}
-          size="large"
-        >
+        <Form form={form} name="registerForm" onFinish={handleRegister} size="large">
           <Form.Item name="username">
             <Input prefix={<UserOutlined />} placeholder="账号" />
           </Form.Item>
 
           <Form.Item name="password">
             <Input.Password prefix={<LockOutlined />} placeholder="密码" />
+          </Form.Item>
+
+          <Form.Item name="confirmPassword">
+            <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
           </Form.Item>
 
           <Form.Item name="captcha">
@@ -111,15 +117,9 @@ const Login: React.FC = () => {
             </div>
           </Form.Item>
 
-          <div className="flex justify-between items-center mb-6">
-            <Form.Item name="rememberMe" valuePropName="checked" className="mb-0">
-              <Checkbox>记住密码</Checkbox>
-            </Form.Item>
-            <Link
-              to="/register"
-              className="text-sm text-blue-500 hover:text-blue-600 leading-loose"
-            >
-              注册账号
+          <div className="flex justify-between items-center mb-6 text-sm">
+            <Link to="/login" className="text-blue-500 hover:text-blue-600 ml-auto">
+              已有账号? 去登录
             </Link>
           </div>
 
@@ -127,11 +127,11 @@ const Login: React.FC = () => {
             <Button
               type="primary"
               htmlType="submit"
-              className="w-full login-btn"
-              loading={logining}
+              className="w-full register-btn"
+              loading={registering}
               disabled={isFormIncomplete}
             >
-              {logining ? '登 录 中...' : '登 录'}
+              {registering ? '注 册 中...' : '注 册'}
             </Button>
           </Form.Item>
         </Form>
@@ -140,4 +140,4 @@ const Login: React.FC = () => {
   )
 }
 
-export default Login
+export default Register

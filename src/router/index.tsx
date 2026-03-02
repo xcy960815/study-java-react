@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import Login from '@/views/login'
+import Register from '@/views/register'
 import MainLayout from '@/layout/index'
 import UserList from '@/views/system/user/index'
 import RoleList from '@/views/system/role/index'
@@ -118,6 +119,11 @@ const router = createBrowserRouter([
     path: '/login',
     element: <Login />,
     handle: { icon: 'Login' },
+  },
+  {
+    path: '/register',
+    element: <Register />,
+    handle: { icon: 'Form' },
   },
   {
     path: '/',
