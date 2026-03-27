@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { Table, Button, Form, Input, Select, Space, Tag, Modal, Pagination, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getOrderList, insertOrder, updateOrder, deleteOrder, type OrderVo } from '@/apis/order'
+import type { OrderDto } from '@/apis/order'
 import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
 
+type OrderSearchValues = Pick<OrderDto, 'orderNo' | 'userId' | 'orderStatus'>
+
+type OrderFormValues = OrderDto
+
 const OrderPage: React.FC = () => {
-  const [searchForm] = Form.useForm()
-  const [editForm] = Form.useForm()
+  const [searchForm] = Form.useForm<OrderSearchValues>()
+  const [editForm] = Form.useForm<OrderFormValues>()
   /** 表格数据 */
   const [tableData, setTableData] = useState<OrderVo[]>([])
   /** 总条数 */
@@ -90,7 +95,10 @@ const OrderPage: React.FC = () => {
   const handleEdit = (record: OrderVo) => {
     setModalTitle('编辑订单')
     setEditRecord(record)
-    editForm.setFieldsValue({ ...record })
+    editForm.setFieldsValue({
+      ...record,
+      payTime: record.payTime ?? undefined,
+    })
     setModalVisible(true)
   }
 

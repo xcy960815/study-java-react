@@ -14,7 +14,7 @@ import {
   TreeSelect,
   message,
 } from 'antd'
-import type { TablePaginationConfig } from 'antd'
+import type { TableColumnsType, TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import {
   getRoleList,
@@ -24,11 +24,20 @@ import {
   disableRole,
   enableRole,
 } from '@/apis/system/role'
-import type { RoleInfoVo, RoleInfoDto } from '@/apis/system/role'
+import type { RoleInfoVo, RoleInfoDto, RoleListParams } from '@/apis/system/role'
 import { getAllMenuTree } from '@/apis/system/menu'
 import type { MenuVo } from '@/apis/system/menu'
 
 const { Option } = Select
+
+type RoleSearchValues = Pick<RoleListParams, 'roleName' | 'roleCode' | 'status'>
+
+type RoleFormValues = RoleInfoDto
+
+type PaginationState = {
+  current: number
+  pageSize: number
+}
 
 /** 将菜单树过滤为仅包含目录类型（menuType === 0）的节点 */
 const filterMenuTree = (tree: MenuVo[]): MenuVo[] => {
@@ -57,10 +66,10 @@ const buildTreeData = (tree: MenuVo[]): TreeNode[] => {
 
 const RoleList: React.FC = () => {
   // 搜索表单
-  const [searchForm] = Form.useForm()
+  const [searchForm] = Form.useForm<RoleSearchValues>()
 
   // 弹窗表单
-  const [modalForm] = Form.useForm()
+  const [modalForm] = Form.useForm<RoleFormValues>()
 
   // 表格数据
   const [tableData, setTableData] = useState<RoleInfoVo[]>([])
@@ -72,7 +81,7 @@ const RoleList: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   // 分页
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 })
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 })
 
   // 菜单树数据
   const [menuTreeData, setMenuTreeData] = useState<MenuVo[]>([])
@@ -126,9 +135,15 @@ const RoleList: React.FC = () => {
     fetchRoleList(1, pagination.pageSize)
   }
 
+  // 重置
+  const handleReset = () => {
+    searchForm.resetFields()
+    fetchRoleList(1, pagination.pageSize)
+  }
+
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchRoleList(pag.current, pag.pageSize)
+    fetchRoleList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增角色
@@ -182,13 +197,14 @@ const RoleList: React.FC = () => {
   // 弹窗确认
   const handleModalOk = async () => {
     try {
-      const values: RoleInfoDto = await modalForm.validateFields()
+      const values = await modalForm.validateFields()
       setSaveLoading(true)
+      const { id, ...payload } = values
       if (modalTitle === '新增角色') {
-        await insertRole(values)
+        await insertRole(payload)
         message.success('新增成功')
       } else {
-        await updateRole({ ...values, id: modalForm.getFieldValue('id') })
+        await updateRole({ ...payload, id })
         message.success('修改成功')
       }
       setModalVisible(false)
@@ -200,7 +216,7 @@ const RoleList: React.FC = () => {
     }
   }
 
-  const columns = [
+  const columns: TableColumnsType<RoleInfoVo> = [
     { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 150 },
     { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode', width: 150 },
     { title: '显示顺序', dataIndex: 'roleSort', key: 'roleSort', width: 100 },
@@ -209,7 +225,7 @@ const RoleList: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 80,
-      render: (status: number) => (
+      render: (status) => (
         <Tag color={status === 1 ? 'success' : 'error'}>{status === 1 ? '正常' : '停用'}</Tag>
       ),
     },
@@ -220,7 +236,7 @@ const RoleList: React.FC = () => {
       key: 'action',
       fixed: 'right' as const,
       width: 200,
-      render: (_: unknown, record: RoleInfoVo) => (
+      render: (_value, record) => (
         <Space size="middle">
           <Button type="link" onClick={() => handleEdit(record)} className="p-0">
             编辑
@@ -259,16 +275,22 @@ const RoleList: React.FC = () => {
 
   return (
     <div>
-      <Form
-        form={searchForm}
-        layout="inline"
-        className="mb-4 bg-gray-50 p-4 rounded border border-gray-200"
-      >
+      <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="roleName" label="角色名称">
-          <Input placeholder="角色名称" onPressEnter={handleSearch} />
+          <Input
+            placeholder="请输入角色名称"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="roleCode" label="角色编码">
-          <Input placeholder="角色编码" onPressEnter={handleSearch} />
+          <Input
+            placeholder="请输入角色编码"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="status" label="状态">
           <Select placeholder="请选择状态" style={{ width: 200 }} allowClear>
@@ -277,17 +299,20 @@ const RoleList: React.FC = () => {
           </Select>
         </Form.Item>
         <Form.Item>
-          <Button type="primary" onClick={handleSearch}>
-            搜索
-          </Button>
+          <Space>
+            <Button type="primary" onClick={handleSearch}>
+              搜索
+            </Button>
+            <Button onClick={handleReset}>重置</Button>
+          </Space>
         </Form.Item>
       </Form>
 
-      <div className="mb-4">
+      <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增角色
         </Button>
-      </div>
+      </Space>
 
       <Table
         columns={columns}

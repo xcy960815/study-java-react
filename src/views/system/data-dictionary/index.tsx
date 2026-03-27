@@ -13,24 +13,37 @@ import {
   Space,
   message,
 } from 'antd'
-import type { TablePaginationConfig } from 'antd'
-import { PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import type { TableColumnsType, TablePaginationConfig } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
 import {
   getDataDictList,
   insertDataDict,
   updateDataDict,
   deleteDataDict,
 } from '@/apis/system/dataDict'
-import type { DataDictionaryVo, DataDictionaryDto } from '@/apis/system/dataDict'
+import type {
+  DataDictionaryVo,
+  DataDictionaryDto,
+  DataDictListParams,
+} from '@/apis/system/dataDict'
 
 const { Option } = Select
 
+type DataDictionarySearchValues = Pick<DataDictListParams, 'dictType' | 'dictName' | 'status'>
+
+type DataDictionaryFormValues = DataDictionaryDto
+
+type PaginationState = {
+  current: number
+  pageSize: number
+}
+
 const DataDictionaryList: React.FC = () => {
   // 搜索表单
-  const [searchForm] = Form.useForm()
+  const [searchForm] = Form.useForm<DataDictionarySearchValues>()
 
   // 弹窗表单
-  const [modalForm] = Form.useForm()
+  const [modalForm] = Form.useForm<DataDictionaryFormValues>()
 
   // 表格数据
   const [tableData, setTableData] = useState<DataDictionaryVo[]>([])
@@ -42,7 +55,7 @@ const DataDictionaryList: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   // 分页
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 })
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 })
 
   // 弹窗状态
   const [modalVisible, setModalVisible] = useState(false)
@@ -90,7 +103,7 @@ const DataDictionaryList: React.FC = () => {
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchDataDictList(pag.current, pag.pageSize)
+    fetchDataDictList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增字典
@@ -122,13 +135,13 @@ const DataDictionaryList: React.FC = () => {
   // 弹窗确认
   const handleModalOk = async () => {
     try {
-      const values: DataDictionaryDto = await modalForm.validateFields()
+      const values = await modalForm.validateFields()
       setSaveLoading(true)
-      const id = modalForm.getFieldValue('id')
+      const { id, ...payload } = values
       if (id) {
-        await updateDataDict({ ...values, id })
+        await updateDataDict({ ...payload, id })
       } else {
-        await insertDataDict(values)
+        await insertDataDict(payload)
       }
       message.success('操作成功')
       setModalVisible(false)
@@ -140,13 +153,13 @@ const DataDictionaryList: React.FC = () => {
     }
   }
 
-  const columns = [
+  const columns: TableColumnsType<DataDictionaryVo> = [
     {
       title: '序号',
       key: 'index',
       width: 55,
       align: 'center' as const,
-      render: (_: unknown, __: unknown, index: number) =>
+      render: (_value, _record, index) =>
         (pagination.current - 1) * pagination.pageSize + index + 1,
     },
     {
@@ -190,7 +203,7 @@ const DataDictionaryList: React.FC = () => {
       key: 'status',
       width: 80,
       align: 'center' as const,
-      render: (status: number) => (
+      render: (status) => (
         <Tag color={status === 1 ? 'success' : 'error'}>{status === 1 ? '启用' : '禁用'}</Tag>
       ),
     },
@@ -207,7 +220,7 @@ const DataDictionaryList: React.FC = () => {
       fixed: 'right' as const,
       width: 150,
       align: 'center' as const,
-      render: (_: unknown, record: DataDictionaryVo) => (
+      render: (_value, record) => (
         <Space size="middle">
           <Button type="link" onClick={() => handleEdit(record)} className="p-0">
             修改
@@ -224,16 +237,22 @@ const DataDictionaryList: React.FC = () => {
 
   return (
     <div>
-      <Form
-        form={searchForm}
-        layout="inline"
-        className="mb-4 bg-gray-50 p-4 rounded border border-gray-200"
-      >
+      <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="dictType" label="字典类型">
-          <Input placeholder="请输入字典类型" />
+          <Input
+            placeholder="请输入字典类型"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="dictName" label="字典名称">
-          <Input placeholder="请输入字典名称" />
+          <Input
+            placeholder="请输入字典名称"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="status" label="状态">
           <Select placeholder="请选择状态" style={{ width: 200 }} allowClear>
@@ -243,21 +262,19 @@ const DataDictionaryList: React.FC = () => {
         </Form.Item>
         <Form.Item>
           <Space>
-            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+            <Button type="primary" onClick={handleSearch}>
               搜索
             </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
-              重置
-            </Button>
+            <Button onClick={handleReset}>重置</Button>
           </Space>
         </Form.Item>
       </Form>
 
-      <div className="mb-4">
+      <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增字典
         </Button>
-      </div>
+      </Space>
 
       <Table
         columns={columns}

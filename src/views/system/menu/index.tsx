@@ -14,12 +14,21 @@ import {
   TreeSelect,
   message,
 } from 'antd'
-import type { TablePaginationConfig } from 'antd'
+import type { TableColumnsType, TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { getMenuTree, getAllMenuTree, insertMenu, updateMenu, deleteMenu } from '@/apis/system/menu'
-import type { MenuVo, MenuDto } from '@/apis/system/menu'
+import type { MenuVo, MenuDto, MenuListParams } from '@/apis/system/menu'
 
 const { Option } = Select
+
+type MenuSearchValues = Pick<MenuListParams, 'menuName' | 'menuType'>
+
+type MenuFormValues = MenuDto
+
+type PaginationState = {
+  current: number
+  pageSize: number
+}
 
 /** 将菜单树过滤为仅包含目录类型（menuType === 0）的节点，用于 TreeSelect */
 const filterDirTree = (tree: MenuVo[]): MenuVo[] => {
@@ -48,10 +57,10 @@ const buildTreeData = (tree: MenuVo[]): TreeNode[] => {
 
 const MenuList: React.FC = () => {
   // 搜索表单
-  const [searchForm] = Form.useForm()
+  const [searchForm] = Form.useForm<MenuSearchValues>()
 
   // 弹窗表单
-  const [modalForm] = Form.useForm()
+  const [modalForm] = Form.useForm<MenuFormValues>()
 
   // 表格数据（树形）
   const [treeData, setTreeData] = useState<MenuVo[]>([])
@@ -63,7 +72,7 @@ const MenuList: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   // 分页
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 })
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 })
 
   // 父菜单 TreeSelect 数据
   const [parentTreeData, setParentTreeData] = useState<MenuVo[]>([])
@@ -117,9 +126,15 @@ const MenuList: React.FC = () => {
     fetchMenuList(1, pagination.pageSize)
   }
 
+  // 重置
+  const handleReset = () => {
+    searchForm.resetFields()
+    fetchMenuList(1, pagination.pageSize)
+  }
+
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchMenuList(pag.current, pag.pageSize)
+    fetchMenuList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增菜单
@@ -166,12 +181,13 @@ const MenuList: React.FC = () => {
   // 弹窗确认
   const handleModalOk = async () => {
     try {
-      const values: MenuDto = await modalForm.validateFields()
+      const values = await modalForm.validateFields()
       setSaveLoading(true)
+      const { id, ...payload } = values
       if (modalTitle === '新增菜单' || modalTitle === '复制菜单' || modalTitle === '创建子菜单') {
-        await insertMenu(values)
+        await insertMenu(payload)
       } else {
-        await updateMenu({ ...values, id: modalForm.getFieldValue('id') })
+        await updateMenu({ ...payload, id })
       }
       message.success('操作成功')
       setModalVisible(false)
@@ -184,7 +200,7 @@ const MenuList: React.FC = () => {
     }
   }
 
-  const columns = [
+  const columns: TableColumnsType<MenuVo> = [
     { title: '菜单名称', dataIndex: 'menuName', key: 'menuName', width: 150 },
     { title: '菜单路径', dataIndex: 'path', key: 'path', width: 250 },
     { title: '组件路径', dataIndex: 'component', key: 'component', width: 260 },
@@ -194,7 +210,7 @@ const MenuList: React.FC = () => {
       dataIndex: 'menuType',
       key: 'menuType',
       width: 80,
-      render: (menuType: number) => {
+      render: (menuType) => {
         const map: Record<number, { color: string; label: string }> = {
           0: { color: 'success', label: '目录' },
           1: { color: 'warning', label: '菜单' },
@@ -211,7 +227,7 @@ const MenuList: React.FC = () => {
       key: 'action',
       fixed: 'right' as const,
       width: 280,
-      render: (_: unknown, record: MenuVo) => (
+      render: (_value, record) => (
         <Space size="middle">
           <Button type="link" onClick={() => handleEdit(record)} className="p-0">
             编辑
@@ -239,13 +255,14 @@ const MenuList: React.FC = () => {
 
   return (
     <div>
-      <Form
-        form={searchForm}
-        layout="inline"
-        className="mb-4 bg-gray-50 p-4 rounded border border-gray-200"
-      >
+      <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="menuName" label="菜单名称">
-          <Input placeholder="菜单名称" onPressEnter={handleSearch} />
+          <Input
+            placeholder="请输入菜单名称"
+            allowClear
+            style={{ width: 200 }}
+            onPressEnter={handleSearch}
+          />
         </Form.Item>
         <Form.Item name="menuType" label="菜单类型">
           <Select placeholder="菜单类型" style={{ width: 200 }} allowClear>
@@ -255,17 +272,20 @@ const MenuList: React.FC = () => {
           </Select>
         </Form.Item>
         <Form.Item>
-          <Button type="primary" onClick={handleSearch}>
-            搜索
-          </Button>
+          <Space>
+            <Button type="primary" onClick={handleSearch}>
+              搜索
+            </Button>
+            <Button onClick={handleReset}>重置</Button>
+          </Space>
         </Form.Item>
       </Form>
 
-      <div className="mb-4">
+      <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           新增菜单
         </Button>
-      </div>
+      </Space>
 
       <Table
         columns={columns}

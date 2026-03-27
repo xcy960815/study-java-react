@@ -14,11 +14,16 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getGoodsList, insertGoods, updateGoods, deleteGoods, type GoodsVo } from '@/apis/goods'
+import type { GoodsDto } from '@/apis/goods'
 import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
 
+type GoodsSearchValues = Pick<GoodsDto, 'goodsName' | 'goodsCategoryId' | 'goodsSellStatus'>
+
+type GoodsFormValues = GoodsDto
+
 const GoodsPage: React.FC = () => {
-  const [searchForm] = Form.useForm()
-  const [editForm] = Form.useForm()
+  const [searchForm] = Form.useForm<GoodsSearchValues>()
+  const [editForm] = Form.useForm<GoodsFormValues>()
   /** 表格数据 */
   const [tableData, setTableData] = useState<GoodsVo[]>([])
   /** 总条数 */

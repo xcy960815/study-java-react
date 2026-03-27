@@ -15,7 +15,10 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getOperLogList, deleteOperLog, cleanOperLog, type OperLogVo } from '@/apis/monitor/operlog'
+import type { OperLogDto } from '@/apis/monitor/operlog'
 import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
+
+type OperLogSearchValues = OperLogDto
 
 /** 操作类型映射 */
 const businessTypeNames = [
@@ -62,7 +65,7 @@ const formatJson = (json: string) => {
 }
 
 const OperlogPage: React.FC = () => {
-  const [form] = Form.useForm()
+  const [form] = Form.useForm<OperLogSearchValues>()
   /** 表格数据 */
   const [tableData, setTableData] = useState<OperLogVo[]>([])
   /** 总条数 */

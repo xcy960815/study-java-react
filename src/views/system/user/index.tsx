@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { Form, Input, Select, Button, Table, Space, Tag, Modal, Popconfirm, message } from 'antd'
-import type { TablePaginationConfig } from 'antd'
+import type { TableColumnsType, TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { getUserList, insertUser, updateUser, deleteUser } from '@/apis/system/user'
-import type { UserInfoVo } from '@/apis/system/user'
+import type { UserInfoVo, UserListParams } from '@/apis/system/user'
 import { getAllRoleList } from '@/apis/system/role'
 import type { RoleInfoVo } from '@/apis/system/role'
 
 const { Option } = Select
 
+type UserSearchValues = Pick<UserListParams, 'nickName' | 'loginName' | 'roleIds'>
+
+type UserFormValues = Partial<UserInfoVo>
+
+type PaginationState = {
+  current: number
+  pageSize: number
+}
+
 const UserList: React.FC = () => {
   // 表单
-  const [searchForm] = Form.useForm()
+  const [searchForm] = Form.useForm<UserSearchValues>()
 
   // 弹窗表单
-  const [modalForm] = Form.useForm()
+  const [modalForm] = Form.useForm<UserFormValues>()
 
   // 表格数据
   const [tableData, setTableData] = useState<UserInfoVo[]>([])
@@ -26,7 +35,7 @@ const UserList: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   // 分页
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 })
+  const [pagination, setPagination] = useState<PaginationState>({ current: 1, pageSize: 10 })
 
   // 角色列表
   const [roleList, setRoleList] = useState<RoleInfoVo[]>([])
@@ -88,7 +97,7 @@ const UserList: React.FC = () => {
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchUserList(pag.current, pag.pageSize)
+    fetchUserList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   const handleAdd = () => {
@@ -122,11 +131,12 @@ const UserList: React.FC = () => {
     try {
       const values = await modalForm.validateFields()
       setSaveLoading(true)
+      const { id, ...payload } = values
       if (modalTitle === '新增用户') {
-        await insertUser(values)
+        await insertUser(payload)
         message.success('新增成功')
       } else {
-        await updateUser({ ...values, id: modalForm.getFieldValue('id') })
+        await updateUser({ ...payload, id })
         message.success('修改成功')
       }
       setModalVisible(false)
@@ -138,7 +148,7 @@ const UserList: React.FC = () => {
     }
   }
 
-  const columns = [
+  const columns: TableColumnsType<UserInfoVo> = [
     { title: '用户昵称', dataIndex: 'nickName', key: 'nickName' },
     { title: '用户年龄', dataIndex: 'age', key: 'age' },
     { title: '登陆账号', dataIndex: 'loginName', key: 'loginName' },
@@ -146,9 +156,9 @@ const UserList: React.FC = () => {
       title: '角色',
       dataIndex: 'roleNames',
       key: 'roleNames',
-      render: (roleNames: string[]) => (
+      render: (roleNames) => (
         <>
-          {roleNames?.map((role) => (
+          {roleNames?.map((role: string) => (
             <Tag color="blue" key={role}>
               {role}
             </Tag>
@@ -160,9 +170,9 @@ const UserList: React.FC = () => {
       title: '角色编码',
       dataIndex: 'roleCodes',
       key: 'roleCodes',
-      render: (roleCodes: string[]) => (
+      render: (roleCodes) => (
         <>
-          {roleCodes?.map((code) => (
+          {roleCodes?.map((code: string) => (
             <Tag color="cyan" key={code}>
               {code}
             </Tag>
@@ -178,7 +188,7 @@ const UserList: React.FC = () => {
       key: 'action',
       fixed: 'right' as const,
       width: 150,
-      render: (_: any, record: UserInfoVo) => (
+      render: (_value, record) => (
         <Space size="middle">
           <Button type="link" onClick={() => handleEdit(record)} className="p-0">
             编辑
