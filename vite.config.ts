@@ -1,9 +1,17 @@
 import { defineConfig, loadEnv } from 'vite'
-import { type PreRenderedAsset, type PreRenderedChunk } from 'rollup'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { fileStructurePlugin } from './src/plugins/file-structure'
+
+interface OutputChunkInfo {
+  facadeModuleId?: string | null
+}
+
+interface OutputAssetInfo {
+  name?: string
+  originalFileName?: string | null
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -72,7 +80,7 @@ export default defineConfig(({ mode }) => {
           // 入口文件输出配置
           entryFileNames: `assets/js/[name]-[format]-[hash].js`,
           // 代码引入文件输出配置
-          chunkFileNames(chunkInfo: PreRenderedChunk) {
+          chunkFileNames(chunkInfo: OutputChunkInfo) {
             const facadeModuleId = chunkInfo.facadeModuleId
             if (facadeModuleId) {
               const facadeModuleIds = facadeModuleId.split('/')
@@ -82,7 +90,7 @@ export default defineConfig(({ mode }) => {
             return `assets/js/[name]-[hash].js`
           },
           // 静态资源输出配置
-          assetFileNames(assetInfo: PreRenderedAsset) {
+          assetFileNames(assetInfo: OutputAssetInfo) {
             const name = assetInfo.name || ''
             const originalFileName = assetInfo.originalFileName || ''
             const imgSuffixs = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']
