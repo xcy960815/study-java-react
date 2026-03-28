@@ -236,7 +236,7 @@ const DataDictionaryList: React.FC = () => {
   ]
 
   return (
-    <div>
+    <div className="system-data-dictionary-page">
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="dictType" label="字典类型">
           <Input

@@ -92,7 +92,7 @@ const Register: React.FC = () => {
     (showConfirmPassword ? (confirmPasswordValue?.length ?? 0) : 0)
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#f6f0ff] text-slate-900">
+    <div className="register-page relative h-screen overflow-hidden bg-[#f6f0ff] text-slate-900">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(108,63,245,0.24),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(255,155,107,0.28),_transparent_26%),linear-gradient(135deg,_#fff8ef_0%,_#f4f2ff_48%,_#eef7ff_100%)]" />
       <div className="absolute left-[-10%] top-[-10%] h-72 w-72 rounded-full bg-[#6c3ff5]/18 blur-3xl" />
       <div className="absolute bottom-[-14%] right-[-8%] h-80 w-80 rounded-full bg-[#ff9b6b]/24 blur-3xl" />

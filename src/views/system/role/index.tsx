@@ -274,7 +274,7 @@ const RoleList: React.FC = () => {
   ]
 
   return (
-    <div>
+    <div className="system-role-page">
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="roleName" label="角色名称">
           <Input

@@ -27,7 +27,7 @@ const ReportPage: React.FC = () => {
   }, [])
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="monitor-report-page" style={{ padding: 24 }}>
       <h2 style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>经营报表（昨日数据）</h2>
       <Spin spinning={loading}>
         <Row gutter={24}>

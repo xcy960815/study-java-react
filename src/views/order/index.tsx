@@ -205,7 +205,7 @@ const OrderPage: React.FC = () => {
   ]
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="order-page" style={{ padding: 16 }}>
       {/* 搜索 */}
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="orderNo" label="订单号">

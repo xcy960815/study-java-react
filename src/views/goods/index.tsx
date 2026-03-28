@@ -186,7 +186,7 @@ const GoodsPage: React.FC = () => {
   ]
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="goods-page" style={{ padding: 16 }}>
       {/* 搜索 */}
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="goodsName" label="商品名称">

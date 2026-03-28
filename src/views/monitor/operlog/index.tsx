@@ -213,7 +213,7 @@ const OperlogPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="monitor-operlog-page" style={{ padding: 16 }}>
       {/* 搜索区域 */}
       <Form form={form} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="title" label="系统模块">

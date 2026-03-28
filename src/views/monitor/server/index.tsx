@@ -136,7 +136,7 @@ const ServerPage: React.FC = () => {
   }, [fetchInfo])
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="monitor-server-page" style={{ padding: 20 }}>
       {/* 头部 */}
       <div
         style={{

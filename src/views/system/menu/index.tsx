@@ -254,7 +254,7 @@ const MenuList: React.FC = () => {
   ]
 
   return (
-    <div>
+    <div className="system-menu-page">
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="menuName" label="菜单名称">
           <Input

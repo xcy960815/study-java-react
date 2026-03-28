@@ -204,7 +204,7 @@ const UserList: React.FC = () => {
   ]
 
   return (
-    <div className="user-page">
+    <div className="system-user-page user-page">
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="nickName" label="用户昵称">
           <Input
