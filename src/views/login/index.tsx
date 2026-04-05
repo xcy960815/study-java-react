@@ -75,10 +75,6 @@ const Login: React.FC = () => {
     }
   }
 
-  const handleGoogleLogin = () => {
-    message.info('第三方登录暂未开放，当前请使用账号密码登录。')
-  }
-
   const applicationTitle = import.meta.env.VITE_APP_TITLE || 'Study Java React'
 
   return (
@@ -254,40 +250,6 @@ const Login: React.FC = () => {
                   icon={<ArrowRightOutlined />}
                 />
               </Form.Item>
-
-              <div className="mb-5">
-                <InteractiveHoverButton
-                  type="button"
-                  text="Google Sign In"
-                  onClick={handleGoogleLogin}
-                  overlayClassName="bg-[#1f2937] text-white"
-                  icon={
-                    <svg
-                      aria-hidden="true"
-                      className="h-4 w-4"
-                      viewBox="0 0 48 48"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        fill="#FFC107"
-                        d="M43.611 20.083H42V20H24v8h11.303C33.652 32.657 29.214 36 24 36c-6.627 0-12-5.373-12-12S17.373 12 24 12c3.059 0 5.84 1.154 7.957 3.043l5.657-5.657C34.053 6.053 29.277 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917Z"
-                      />
-                      <path
-                        fill="#FF3D00"
-                        d="M6.306 14.691 12.88 19.51C14.661 15.108 18.961 12 24 12c3.059 0 5.84 1.154 7.957 3.043l5.657-5.657C34.053 6.053 29.277 4 24 4c-7.682 0-14.41 4.337-17.694 10.691Z"
-                      />
-                      <path
-                        fill="#4CAF50"
-                        d="M24 44c5.176 0 9.86-1.977 13.408-5.192l-6.19-5.238C29.145 35.091 26.715 36 24 36c-5.193 0-9.624-3.33-11.302-7.948l-6.525 5.025C9.418 39.556 16.585 44 24 44Z"
-                      />
-                      <path
-                        fill="#1976D2"
-                        d="M43.611 20.083H42V20H24v8h11.303a12.07 12.07 0 0 1-4.085 5.57l.003-.002 6.19 5.238C36.973 39.287 44 34 44 24c0-1.341-.138-2.65-.389-3.917Z"
-                      />
-                    </svg>
-                  }
-                />
-              </div>
 
               <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                 <span>还没有账号？</span>
