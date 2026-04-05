@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Table,
   Button,
   Form,
   Input,
+  InputNumber,
   Select,
   Space,
   Tag,
@@ -22,6 +23,7 @@ type GoodsSearchValues = Pick<GoodsDto, 'goodsName' | 'goodsCategoryId' | 'goods
 type GoodsFormValues = GoodsDto
 
 const GoodsPage: React.FC = () => {
+  const defaultPageSize = 10
   const [searchForm] = Form.useForm<GoodsSearchValues>()
   const [editForm] = Form.useForm<GoodsFormValues>()
   /** 表格数据 */
@@ -44,22 +46,25 @@ const GoodsPage: React.FC = () => {
   const [sellStatusOptions, setSellStatusOptions] = useState<DataDictionaryVo[]>([])
 
   /** 获取商品列表 */
-  const fetchList = async (pn = pageNum, ps = pageSize) => {
-    setLoading(true)
-    try {
-      const values = searchForm.getFieldsValue()
-      const res = await getGoodsList({ ...values, pageNum: pn, pageSize: ps })
-      setTableData(res.data)
-      setTotal(res.total)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchList = useCallback(
+    async (pn: number, ps: number) => {
+      setLoading(true)
+      try {
+        const values = searchForm.getFieldsValue()
+        const res = await getGoodsList({ ...values, pageNum: pn, pageSize: ps })
+        setTableData(res.data)
+        setTotal(res.total)
+      } catch {
+        message.error('获取商品列表失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
 
   /** 获取上架状态字典 */
-  const fetchSellStatusDict = async () => {
+  const fetchSellStatusDict = useCallback(async () => {
     try {
       const res = await getDataDictList({
         dictType: 'goods_sell_status',
@@ -68,15 +73,15 @@ const GoodsPage: React.FC = () => {
         pageSize: 100,
       })
       setSellStatusOptions(res.data)
-    } catch (err) {
-      console.error('获取上架状态字典失败:', err)
+    } catch {
+      message.error('获取上架状态字典失败，请稍后重试。')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchSellStatusDict()
-    fetchList(1, 10)
-  }, [])
+    void fetchSellStatusDict()
+    void fetchList(1, defaultPageSize)
+  }, [fetchList, fetchSellStatusDict])
 
   /** 字典渲染辅助 */
   const getDictName = (val: number) => {
@@ -87,7 +92,7 @@ const GoodsPage: React.FC = () => {
   /** 搜索 */
   const handleSearch = () => {
     setPageNum(1)
-    fetchList(1, pageSize)
+    void fetchList(1, pageSize)
   }
 
   /** 新增 */
@@ -113,7 +118,7 @@ const GoodsPage: React.FC = () => {
       onOk: async () => {
         await deleteGoods(record.goodsId)
         message.success('删除成功')
-        fetchList()
+        await fetchList(pageNum, pageSize)
       },
     })
   }
@@ -128,14 +133,14 @@ const GoodsPage: React.FC = () => {
     }
     message.success(editRecord ? '更新成功' : '新增成功')
     setModalVisible(false)
-    fetchList()
+    await fetchList(pageNum, pageSize)
   }
 
   /** 分页 */
   const handlePageChange = (page: number, size: number) => {
     setPageNum(page)
     setPageSize(size)
-    fetchList(page, size)
+    void fetchList(page, size)
   }
 
   /** 表格列 */
@@ -193,7 +198,7 @@ const GoodsPage: React.FC = () => {
           <Input placeholder="商品名称" allowClear style={{ width: 200 }} />
         </Form.Item>
         <Form.Item name="goodsCategoryId" label="分类ID">
-          <Input placeholder="分类ID" allowClear style={{ width: 150 }} />
+          <InputNumber placeholder="分类ID" style={{ width: 150 }} min={0} />
         </Form.Item>
         <Form.Item name="goodsSellStatus" label="上架状态">
           <Select placeholder="上架状态" allowClear style={{ width: 200 }}>
@@ -261,7 +266,7 @@ const GoodsPage: React.FC = () => {
             label="分类ID"
             rules={[{ required: true, message: '请输入分类ID' }]}
           >
-            <Input placeholder="请输入分类ID" />
+            <InputNumber placeholder="请输入分类ID" min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="goodsCoverImg" label="封面图">
             <Input placeholder="请输入封面图URL" />
@@ -273,21 +278,26 @@ const GoodsPage: React.FC = () => {
             <Input.TextArea placeholder="请输入商品详情" rows={3} />
           </Form.Item>
           <Form.Item name="originalPrice" label="原价">
-            <Input placeholder="请输入原价" />
+            <InputNumber placeholder="请输入原价" min={0} precision={2} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="sellingPrice"
             label="售价"
             rules={[{ required: true, message: '请输入售价' }]}
           >
-            <Input placeholder="请输入售价" />
+            <InputNumber placeholder="请输入售价" min={0} precision={2} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="stockNum"
             label="库存"
             rules={[{ required: true, message: '请输入库存' }]}
           >
-            <Input placeholder="请输入库存数量" />
+            <InputNumber
+              placeholder="请输入库存数量"
+              min={0}
+              precision={0}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <Form.Item name="tag" label="标签">
             <Input placeholder="请输入标签" />

@@ -2,40 +2,46 @@ import { create } from 'zustand'
 import { message } from 'antd'
 import { eventEmitter } from '@/utils/event-emits'
 import { loginModule } from '@/apis/index'
-import { setToken, removeToken, setRefreshToken } from '@/utils/token'
+import { clearAuthTokens, setRefreshToken, setToken } from '@/utils/token'
 import type { LoginRequestDto } from '@/apis/login'
 
-interface LoginState {
-  // state fields if any
-}
-
+/**
+ * 登录模块对外暴露的动作集合。
+ */
 interface LoginActions {
+  /** 发起登录并写入本地登录态 */
   login: (loginData: LoginRequestDto) => Promise<void>
+  /** 发起退出并清理本地登录态 */
   logout: () => Promise<void>
 }
 
-export const useLoginStore = create<LoginState & LoginActions>(() => ({
+/**
+ * 登录状态仓库。
+ * 当前仅承载登录、退出两个动作，便于在页面和请求层之间复用。
+ */
+export const useLoginStore = create<LoginActions>(() => ({
   login: async (loginData: LoginRequestDto) => {
-    try {
-      const response = await loginModule.login(loginData)
-      message.success('登入成功')
-      const { token, refreshToken } = response
-      setToken(token)
-      setRefreshToken(refreshToken)
-      eventEmitter.emit('login')
-    } catch (error) {
-      throw error
-    }
+    const response = await loginModule.login(loginData)
+    message.success('登入成功')
+    const { token, refreshToken } = response
+    setToken(token)
+    setRefreshToken(refreshToken)
+    eventEmitter.emit('login')
   },
 
   logout: async () => {
+    let logoutSucceeded = false
+
     try {
       await loginModule.logout()
-      message.success('退出成功')
-      removeToken()
-      eventEmitter.emit('logout')
-    } catch (error) {
-      removeToken() // ensuring token is removed even if request fails
+      logoutSucceeded = true
+    } catch {
+      message.warning('退出请求失败，已清理本地登录状态。')
+    } finally {
+      if (logoutSucceeded) {
+        message.success('退出成功')
+      }
+      clearAuthTokens()
       eventEmitter.emit('logout')
     }
   },

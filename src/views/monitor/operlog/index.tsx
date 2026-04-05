@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Table,
   Button,
@@ -65,6 +65,7 @@ const formatJson = (json: string) => {
 }
 
 const OperlogPage: React.FC = () => {
+  const defaultPageSize = 10
   const [form] = Form.useForm<OperLogSearchValues>()
   /** 表格数据 */
   const [tableData, setTableData] = useState<OperLogVo[]>([])
@@ -86,22 +87,25 @@ const OperlogPage: React.FC = () => {
   const [businessTypeOptions, setBusinessTypeOptions] = useState<DataDictionaryVo[]>([])
 
   /** 获取操作日志列表 */
-  const fetchList = async (pn = pageNum, ps = pageSize) => {
-    setLoading(true)
-    try {
-      const values = form.getFieldsValue()
-      const res = await getOperLogList({ ...values, pageNum: pn, pageSize: ps })
-      setTableData(res.data)
-      setTotal(res.total)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchList = useCallback(
+    async (pn: number, ps: number) => {
+      setLoading(true)
+      try {
+        const values = form.getFieldsValue()
+        const res = await getOperLogList({ ...values, pageNum: pn, pageSize: ps })
+        setTableData(res.data)
+        setTotal(res.total)
+      } catch {
+        message.error('获取操作日志失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [form]
+  )
 
   /** 获取操作类型字典 */
-  const fetchBusinessTypeDict = async () => {
+  const fetchBusinessTypeDict = useCallback(async () => {
     try {
       const res = await getDataDictList({
         dictType: 'sys_oper_type',
@@ -110,28 +114,28 @@ const OperlogPage: React.FC = () => {
         pageSize: 100,
       })
       setBusinessTypeOptions(res.data)
-    } catch (err) {
-      console.error('获取操作类型字典失败:', err)
+    } catch {
+      message.error('获取操作类型字典失败，请稍后重试。')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchBusinessTypeDict()
-    fetchList(1, 10)
-  }, [])
+    void fetchBusinessTypeDict()
+    void fetchList(1, defaultPageSize)
+  }, [fetchBusinessTypeDict, fetchList])
 
   /** 搜索 */
   const handleSearch = () => {
     setPageNum(1)
-    fetchList(1, pageSize)
+    void fetchList(1, pageSize)
   }
 
   /** 重置 */
   const handleReset = () => {
     form.resetFields()
     setPageNum(1)
-    setPageSize(10)
-    fetchList(1, 10)
+    setPageSize(defaultPageSize)
+    void fetchList(1, defaultPageSize)
   }
 
   /** 批量删除 */
@@ -140,9 +144,9 @@ const OperlogPage: React.FC = () => {
     try {
       await deleteOperLog(selectedIds)
       message.success('删除成功')
-      fetchList()
+      await fetchList(pageNum, pageSize)
     } catch {
-      // ignore
+      message.error('批量删除失败，请稍后重试。')
     }
   }
 
@@ -151,9 +155,9 @@ const OperlogPage: React.FC = () => {
     try {
       await cleanOperLog()
       message.success('清空成功')
-      fetchList()
+      await fetchList(pageNum, pageSize)
     } catch {
-      // ignore
+      message.error('清空日志失败，请稍后重试。')
     }
   }
 
@@ -209,7 +213,7 @@ const OperlogPage: React.FC = () => {
   const handlePageChange = (page: number, size: number) => {
     setPageNum(page)
     setPageSize(size)
-    fetchList(page, size)
+    void fetchList(page, size)
   }
 
   return (

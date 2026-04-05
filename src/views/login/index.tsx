@@ -6,7 +6,7 @@ import {
   SafetyCertificateOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import md5 from 'md5'
 import { useLoginStore } from '@/store'
 import { loginModule } from '@/apis'
@@ -17,6 +17,7 @@ import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button
 const Login: React.FC = () => {
   const [form] = Form.useForm<LoginRequestDto>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [logining, setLogining] = useState(false)
   const [captchaUrl, setCaptchaUrl] = useState('')
   const [captchaLoading, setCaptchaLoading] = useState(false)
@@ -25,6 +26,7 @@ const Login: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('')
 
   const { login } = useLoginStore()
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/system'
 
   const usernameValue = Form.useWatch('username', form)
   const passwordValue = Form.useWatch('password', form)
@@ -48,8 +50,8 @@ const Login: React.FC = () => {
     try {
       const captchaRes = await loginModule.getCaptcha()
       setCaptchaUrl(captchaRes)
-    } catch (error) {
-      console.error('Failed to get captcha', error)
+    } catch {
+      message.error('验证码获取失败，请稍后重试。')
     } finally {
       setCaptchaLoading(false)
     }
@@ -64,10 +66,10 @@ const Login: React.FC = () => {
         loginData.password = md5(loginData.password)
       }
       await login(loginData)
-      navigate('/system')
-    } catch (error) {
+      navigate(redirectTo, { replace: true })
+    } catch {
       setErrorMessage('登录失败，请检查账号、密码和验证码后重试。')
-      handleGetCaptcha()
+      void handleGetCaptcha()
     } finally {
       setLogining(false)
     }
@@ -143,7 +145,7 @@ const Login: React.FC = () => {
               form={form}
               name="loginForm"
               onFinish={handleLogin}
-              initialValues={{ username: '13700002703', password: '123456', rememberMe: false }}
+              initialValues={{ rememberMe: false }}
               size="large"
               layout="vertical"
             >
@@ -155,6 +157,7 @@ const Login: React.FC = () => {
                 }
                 name="username"
                 className="mb-4"
+                rules={[{ required: true, message: '请输入账号' }]}
               >
                 <Input
                   prefix={<UserOutlined className="text-slate-400" />}
@@ -174,6 +177,7 @@ const Login: React.FC = () => {
                 }
                 name="password"
                 className="mb-4"
+                rules={[{ required: true, message: '请输入密码' }]}
               >
                 <Input.Password
                   prefix={<LockOutlined className="text-slate-400" />}
@@ -195,6 +199,10 @@ const Login: React.FC = () => {
                 }
                 name="captcha"
                 className="mb-4"
+                rules={[
+                  { required: true, message: '请输入验证码' },
+                  { len: 4, message: '验证码长度应为 4 位' },
+                ]}
               >
                 <div className="grid grid-cols-[1fr_112px] gap-3">
                   <Input

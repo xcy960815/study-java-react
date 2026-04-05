@@ -6,7 +6,7 @@ import {
   SafetyCertificateOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import md5 from 'md5'
 import { loginModule } from '@/apis'
 import type { RegisterRequestDto } from '@/apis/login'
@@ -51,8 +51,8 @@ const Register: React.FC = () => {
     try {
       const captchaRes = await loginModule.getCaptcha()
       setCaptchaUrl(captchaRes)
-    } catch (error) {
-      console.error('Failed to get captcha', error)
+    } catch {
+      message.error('验证码获取失败，请稍后重试。')
     } finally {
       setCaptchaLoading(false)
     }
@@ -62,13 +62,6 @@ const Register: React.FC = () => {
     setRegistering(true)
     setErrorMessage('')
     try {
-      if (values.password !== values.confirmPassword) {
-        setErrorMessage('两次输入的密码不一致，请重新确认。')
-        message.error('两次输入的密码不一致')
-        setRegistering(false)
-        return
-      }
-
       const registerData = { ...values }
       if (registerData.password) {
         registerData.password = md5(registerData.password)
@@ -77,10 +70,10 @@ const Register: React.FC = () => {
 
       await loginModule.register(registerData)
       message.success('注册成功，请登录')
-      navigate('/login')
-    } catch (error) {
+      navigate('/login', { replace: true })
+    } catch {
       setErrorMessage('注册失败，请检查填写内容后重试。')
-      handleGetCaptcha()
+      void handleGetCaptcha()
     } finally {
       setRegistering(false)
     }
@@ -172,6 +165,7 @@ const Register: React.FC = () => {
                 }
                 name="username"
                 className="mb-4"
+                rules={[{ required: true, message: '请输入账号' }]}
               >
                 <Input
                   prefix={<UserOutlined className="text-slate-400" />}
@@ -191,6 +185,10 @@ const Register: React.FC = () => {
                 }
                 name="password"
                 className="mb-4"
+                rules={[
+                  { required: true, message: '请输入密码' },
+                  { min: 6, message: '密码至少需要 6 位' },
+                ]}
               >
                 <Input.Password
                   prefix={<LockOutlined className="text-slate-400" />}
@@ -212,6 +210,19 @@ const Register: React.FC = () => {
                 }
                 name="confirmPassword"
                 className="mb-4"
+                dependencies={['password']}
+                rules={[
+                  { required: true, message: '请再次输入密码' },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue('password') === value) {
+                        return Promise.resolve()
+                      }
+
+                      return Promise.reject(new Error('两次输入的密码不一致'))
+                    },
+                  }),
+                ]}
               >
                 <Input.Password
                   prefix={<LockOutlined className="text-slate-400" />}
@@ -233,6 +244,10 @@ const Register: React.FC = () => {
                 }
                 name="captcha"
                 className="mb-4"
+                rules={[
+                  { required: true, message: '请输入验证码' },
+                  { len: 4, message: '验证码长度应为 4 位' },
+                ]}
               >
                 <div className="grid grid-cols-[1fr_112px] gap-3">
                   <Input

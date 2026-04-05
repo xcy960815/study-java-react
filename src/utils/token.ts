@@ -39,3 +39,18 @@ export const getRefreshToken = (): string | null => {
 export const setRefreshToken = (token: string): void => {
   localStorage.setItem(REFRESH_TOKEN_KEY, token)
 }
+
+/**
+ * 移除本地存储的刷新 Token (Refresh Token)
+ */
+export const removeRefreshToken = (): void => {
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+/**
+ * 清理当前登录态相关的全部 Token
+ */
+export const clearAuthTokens = (): void => {
+  removeToken()
+  removeRefreshToken()
+}

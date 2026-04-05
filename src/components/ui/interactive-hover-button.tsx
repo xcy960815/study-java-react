@@ -1,11 +1,21 @@
 import React from 'react'
 
+/**
+ * 通用悬浮按钮组件属性。
+ */
 interface InteractiveHoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  /** 按钮主文案 */
   text: string
+  /** 右侧图标，默认使用箭头 */
   icon?: React.ReactNode
+  /** 悬浮覆盖层样式 */
   overlayClassName?: string
 }
 
+/**
+ * 带有双层文案和悬浮切换动画的交互按钮。
+ * 适合登录、注册等强调点击反馈的场景。
+ */
 export const InteractiveHoverButton = React.forwardRef<
   HTMLButtonElement,
   InteractiveHoverButtonProps

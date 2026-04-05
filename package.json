@@ -8,6 +8,7 @@
     "dev": "vite --mode daily",
     "dev:pre": "vite --mode pre",
     "dev:prod": "vite --mode prod",
+    "typecheck": "tsc -b",
     "build": "tsc -b && vite build --mode daily",
     "build:pre": "tsc -b && vite build --mode pre",
     "build:prod": "tsc -b && vite build --mode prod",
@@ -15,6 +16,8 @@
     "preview:pre": "dotenv -e env/.env.pre cross-env vite preview --base $VITE_BASE_URL",
     "preview:prod": "dotenv -e env/.env.prod cross-env vite preview --base $VITE_BASE_URL",
     "lint": "eslint .",
+    "lint:ci": "eslint . --max-warnings 0",
+    "check": "pnpm lint:ci && pnpm build:prod",
     "prepare": "husky",
     "format": "pretty-quick --staged",
     "commit": "git-cz"

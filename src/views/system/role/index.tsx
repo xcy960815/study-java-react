@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Form,
   Input,
@@ -65,6 +65,7 @@ const buildTreeData = (tree: MenuVo[]): TreeNode[] => {
 }
 
 const RoleList: React.FC = () => {
+  const defaultPageSize = 10
   // 搜索表单
   const [searchForm] = Form.useForm<RoleSearchValues>()
 
@@ -95,55 +96,58 @@ const RoleList: React.FC = () => {
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
-  useEffect(() => {
-    fetchMenuTree()
-    fetchRoleList()
-  }, [])
-
   // 请求菜单树
-  const fetchMenuTree = async () => {
+  const fetchMenuTree = useCallback(async () => {
     try {
       const result = await getAllMenuTree()
       setMenuTreeData(filterMenuTree(result || []))
-    } catch (e) {
-      console.error('Failed to fetch menu tree')
+    } catch {
+      message.error('获取菜单树失败，请稍后重试。')
     }
-  }
+  }, [])
 
   // 请求角色列表
-  const fetchRoleList = async (page = pagination.current, size = pagination.pageSize) => {
-    setLoading(true)
-    try {
-      const searchValues = searchForm.getFieldsValue()
-      const res = await getRoleList({
-        pageNum: page,
-        pageSize: size,
-        ...searchValues,
-      })
-      setTableData(res.data || [])
-      setTotal(res.total || 0)
-      setPagination({ current: page, pageSize: size })
-    } catch (e) {
-      console.error('Failed to fetch role list')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchRoleList = useCallback(
+    async (page: number, size: number) => {
+      setLoading(true)
+      try {
+        const searchValues = searchForm.getFieldsValue()
+        const res = await getRoleList({
+          pageNum: page,
+          pageSize: size,
+          ...searchValues,
+        })
+        setTableData(res.data || [])
+        setTotal(res.total || 0)
+        setPagination({ current: page, pageSize: size })
+      } catch {
+        message.error('获取角色列表失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
+
+  useEffect(() => {
+    void fetchMenuTree()
+    void fetchRoleList(1, defaultPageSize)
+  }, [fetchMenuTree, fetchRoleList])
 
   // 搜索
   const handleSearch = () => {
-    fetchRoleList(1, pagination.pageSize)
+    void fetchRoleList(1, pagination.pageSize)
   }
 
   // 重置
   const handleReset = () => {
     searchForm.resetFields()
-    fetchRoleList(1, pagination.pageSize)
+    void fetchRoleList(1, pagination.pageSize)
   }
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchRoleList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
+    void fetchRoleList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增角色
@@ -166,9 +170,9 @@ const RoleList: React.FC = () => {
     try {
       await deleteRole(record)
       message.success('删除成功')
-      fetchRoleList()
-    } catch (e) {
-      console.error('Failed to delete')
+      await fetchRoleList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('删除角色失败，请稍后重试。')
     }
   }
 
@@ -177,9 +181,9 @@ const RoleList: React.FC = () => {
     try {
       await disableRole(record)
       message.success('操作成功')
-      fetchRoleList()
-    } catch (e) {
-      console.error('Failed to disable role')
+      await fetchRoleList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('禁用角色失败，请稍后重试。')
     }
   }
 
@@ -188,9 +192,9 @@ const RoleList: React.FC = () => {
     try {
       await enableRole(record)
       message.success('操作成功')
-      fetchRoleList()
-    } catch (e) {
-      console.error('Failed to enable role')
+      await fetchRoleList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('启用角色失败，请稍后重试。')
     }
   }
 
@@ -208,9 +212,9 @@ const RoleList: React.FC = () => {
         message.success('修改成功')
       }
       setModalVisible(false)
-      fetchRoleList()
-    } catch (e) {
-      console.error('Validation failed', e)
+      await fetchRoleList(pagination.current, pagination.pageSize)
+    } catch (error) {
+      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }
@@ -324,6 +328,7 @@ const RoleList: React.FC = () => {
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          defaultPageSize,
           showQuickJumper: true,
           showTotal: (t) => `共 ${t} 条`,
         }}

@@ -1,5 +1,19 @@
-import React, { useState, useEffect } from 'react'
-import { Table, Button, Form, Input, Select, Space, Tag, Modal, Pagination, message } from 'antd'
+import React, { useCallback, useEffect, useState } from 'react'
+import dayjs, { type Dayjs } from 'dayjs'
+import {
+  DatePicker,
+  Table,
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Tag,
+  Modal,
+  Pagination,
+  message,
+} from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getOrderList, insertOrder, updateOrder, deleteOrder, type OrderVo } from '@/apis/order'
 import type { OrderDto } from '@/apis/order'
@@ -7,9 +21,12 @@ import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
 
 type OrderSearchValues = Pick<OrderDto, 'orderNo' | 'userId' | 'orderStatus'>
 
-type OrderFormValues = OrderDto
+type OrderFormValues = Omit<OrderDto, 'payTime'> & {
+  payTime?: Dayjs
+}
 
 const OrderPage: React.FC = () => {
+  const defaultPageSize = 10
   const [searchForm] = Form.useForm<OrderSearchValues>()
   const [editForm] = Form.useForm<OrderFormValues>()
   /** 表格数据 */
@@ -36,22 +53,25 @@ const OrderPage: React.FC = () => {
   const [payTypeOptions, setPayTypeOptions] = useState<DataDictionaryVo[]>([])
 
   /** 获取订单列表 */
-  const fetchList = async (pn = pageNum, ps = pageSize) => {
-    setLoading(true)
-    try {
-      const values = searchForm.getFieldsValue()
-      const res = await getOrderList({ ...values, pageNum: pn, pageSize: ps })
-      setTableData(res.data)
-      setTotal(res.total)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchList = useCallback(
+    async (pn: number, ps: number) => {
+      setLoading(true)
+      try {
+        const values = searchForm.getFieldsValue()
+        const res = await getOrderList({ ...values, pageNum: pn, pageSize: ps })
+        setTableData(res.data)
+        setTotal(res.total)
+      } catch {
+        message.error('获取订单列表失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
 
   /** 获取字典数据 */
-  const fetchDicts = async () => {
+  const fetchDicts = useCallback(async () => {
     try {
       const [orderRes, payStatusRes, payTypeRes] = await Promise.all([
         getDataDictList({ dictType: 'order_status', status: 1, pageNum: 1, pageSize: 100 }),
@@ -61,15 +81,15 @@ const OrderPage: React.FC = () => {
       setOrderStatusOptions(orderRes.data)
       setPayStatusOptions(payStatusRes.data)
       setPayTypeOptions(payTypeRes.data)
-    } catch (err) {
-      console.error('获取字典失败:', err)
+    } catch {
+      message.error('获取字典数据失败，请稍后重试。')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchDicts()
-    fetchList(1, 10)
-  }, [])
+    void fetchDicts()
+    void fetchList(1, defaultPageSize)
+  }, [fetchDicts, fetchList])
 
   /** 字典渲染辅助 */
   const getDictName = (options: DataDictionaryVo[], val: number) => {
@@ -97,7 +117,7 @@ const OrderPage: React.FC = () => {
     setEditRecord(record)
     editForm.setFieldsValue({
       ...record,
-      payTime: record.payTime ?? undefined,
+      payTime: record.payTime ? dayjs(record.payTime) : undefined,
     })
     setModalVisible(true)
   }
@@ -109,7 +129,7 @@ const OrderPage: React.FC = () => {
       onOk: async () => {
         await deleteOrder(record.orderId)
         message.success('删除成功')
-        fetchList()
+        await fetchList(pageNum, pageSize)
       },
     })
   }
@@ -117,21 +137,25 @@ const OrderPage: React.FC = () => {
   /** 提交表单 */
   const handleSubmit = async () => {
     const values = await editForm.validateFields()
+    const payload = {
+      ...values,
+      payTime: values.payTime ? values.payTime.format('YYYY-MM-DD HH:mm:ss') : undefined,
+    }
     if (editRecord) {
-      await updateOrder({ ...values, orderId: editRecord.orderId })
+      await updateOrder({ ...payload, orderId: editRecord.orderId })
     } else {
-      await insertOrder(values)
+      await insertOrder(payload)
     }
     message.success(editRecord ? '更新成功' : '新增成功')
     setModalVisible(false)
-    fetchList()
+    await fetchList(pageNum, pageSize)
   }
 
   /** 分页 */
   const handlePageChange = (page: number, size: number) => {
     setPageNum(page)
     setPageSize(size)
-    fetchList(page, size)
+    void fetchList(page, size)
   }
 
   /** 支付状态 Tag 颜色 */
@@ -212,7 +236,7 @@ const OrderPage: React.FC = () => {
           <Input placeholder="订单号" allowClear style={{ width: 200 }} />
         </Form.Item>
         <Form.Item name="userId" label="用户ID">
-          <Input placeholder="用户ID" allowClear style={{ width: 150 }} />
+          <InputNumber placeholder="用户ID" style={{ width: 150 }} min={0} />
         </Form.Item>
         <Form.Item name="orderStatus" label="订单状态">
           <Select placeholder="订单状态" allowClear style={{ width: 200 }}>
@@ -270,14 +294,19 @@ const OrderPage: React.FC = () => {
             label="用户ID"
             rules={[{ required: true, message: '请输入用户ID' }]}
           >
-            <Input placeholder="请输入用户ID" />
+            <InputNumber placeholder="请输入用户ID" min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="totalPrice"
             label="总价"
             rules={[{ required: true, message: '请输入总价' }]}
           >
-            <Input placeholder="请输入订单总价" />
+            <InputNumber
+              placeholder="请输入订单总价"
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <Form.Item
             name="payStatus"
@@ -285,9 +314,11 @@ const OrderPage: React.FC = () => {
             rules={[{ required: true, message: '请选择支付状态' }]}
           >
             <Select placeholder="请选择支付状态">
-              <Select.Option value={0}>未支付</Select.Option>
-              <Select.Option value={1}>支付成功</Select.Option>
-              <Select.Option value={-1}>支付失败</Select.Option>
+              {payStatusOptions.map((item) => (
+                <Select.Option key={item.id} value={Number(item.dictValue)}>
+                  {item.dictName}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
           <Form.Item
@@ -296,13 +327,20 @@ const OrderPage: React.FC = () => {
             rules={[{ required: true, message: '请选择支付方式' }]}
           >
             <Select placeholder="请选择支付方式">
-              <Select.Option value={0}>无</Select.Option>
-              <Select.Option value={1}>支付宝</Select.Option>
-              <Select.Option value={2}>微信</Select.Option>
+              {payTypeOptions.map((item) => (
+                <Select.Option key={item.id} value={Number(item.dictValue)}>
+                  {item.dictName}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
           <Form.Item name="payTime" label="支付时间">
-            <Input placeholder="请输入支付时间（YYYY-MM-DD HH:mm:ss）" />
+            <DatePicker
+              showTime
+              placeholder="请选择支付时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <Form.Item
             name="orderStatus"

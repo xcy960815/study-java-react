@@ -1,17 +1,26 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
-import Login from '@/views/login'
-import Register from '@/views/register'
 import MainLayout from '@/layout/index'
-import UserList from '@/views/system/user/index'
-import RoleList from '@/views/system/role/index'
-import MenuList from '@/views/system/menu/index'
-import DataDictionaryList from '@/views/system/data-dictionary/index'
+import { changeTabIcon, changeTabTitle } from '@/utils/system-style'
+import {
+  ComingSoonPage,
+  GuestOnlyRoute,
+  HomeRedirect,
+  RequireAuth,
+  RouteEventBridge,
+} from './route-helpers'
+import GoodsPage from '@/views/goods/index'
+import Login from '@/views/login'
 import OperlogPage from '@/views/monitor/operlog/index'
 import ReportPage from '@/views/monitor/report/index'
 import ServerPage from '@/views/monitor/server/index'
 import OrderPage from '@/views/order/index'
-import GoodsPage from '@/views/goods/index'
-import { changeTabIcon } from '@/utils/system-style'
+import Register from '@/views/register'
+import DataDictionaryList from '@/views/system/data-dictionary/index'
+import MenuList from '@/views/system/menu/index'
+import RoleList from '@/views/system/role/index'
+import UserList from '@/views/system/user/index'
+
+const appTitle = import.meta.env.VITE_APP_TITLE || 'Study Java React'
 
 /** 路由 handle 字段类型定义 */
 export interface RouteHandle {
@@ -100,35 +109,52 @@ export const layoutRoutes: RouteObject[] = [
   },
   {
     path: 'ollama',
-    element: <div>Ollama Model Placeholder</div>,
-    handle: { icon: 'Robot', title: 'Ollama 模型' },
+    element: <ComingSoonPage title="Ollama 模型" />,
+    handle: { icon: 'Robot', title: 'Ollama 模型', hidden: true },
   },
   {
     path: 'deepseek',
-    element: <div>DeepSeek Placeholder</div>,
-    handle: { icon: 'Robot', title: 'DeepSeek' },
+    element: <ComingSoonPage title="DeepSeek" />,
+    handle: { icon: 'Robot', title: 'DeepSeek', hidden: true },
   },
 ]
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <Navigate to="/login" replace />,
-  },
-  {
-    path: '/login',
-    element: <Login />,
-    handle: { icon: 'Login' },
-  },
-  {
-    path: '/register',
-    element: <Register />,
-    handle: { icon: 'Form' },
-  },
-  {
-    path: '/',
-    element: <MainLayout />,
-    children: layoutRoutes,
+    element: <RouteEventBridge />,
+    children: [
+      {
+        index: true,
+        element: <HomeRedirect />,
+      },
+      {
+        path: '/login',
+        element: (
+          <GuestOnlyRoute>
+            <Login />
+          </GuestOnlyRoute>
+        ),
+        handle: { icon: 'Login', title: '登录', hidden: true },
+      },
+      {
+        path: '/register',
+        element: (
+          <GuestOnlyRoute>
+            <Register />
+          </GuestOnlyRoute>
+        ),
+        handle: { icon: 'Form', title: '注册', hidden: true },
+      },
+      {
+        path: '/',
+        element: (
+          <RequireAuth>
+            <MainLayout />
+          </RequireAuth>
+        ),
+        children: layoutRoutes,
+      },
+    ],
   },
 ])
 
@@ -136,13 +162,16 @@ router.subscribe((state) => {
   const matches = state.matches
   const match = matches[matches.length - 1]
 
-  // 查找匹配的路由是否有 handle.icon 的配置，动态更新 Tab 图标
   const iconName = match?.route?.handle?.icon
+  const pageTitle = match?.route?.handle?.title
+
   if (iconName) {
     changeTabIcon(iconName as string)
   } else {
-    changeTabIcon('System') // 默认使用 System 原点图标
+    changeTabIcon('System')
   }
+
+  changeTabTitle(pageTitle ? `${String(pageTitle)} - ${appTitle}` : appTitle)
 })
 
 export default router

@@ -1,24 +1,19 @@
-export function debounce<F extends (...args: any[]) => any>(
-  func: F,
+export function debounce<TArgs extends unknown[], TResult>(
+  func: (...args: TArgs) => TResult,
   delay: number
-): (...args: Parameters<F>) => ReturnType<F> {
-  let timeoutId: ReturnType<typeof setTimeout> | null
+): (...args: TArgs) => Promise<Awaited<TResult>> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-  const debouncedFunction = function (this: ThisParameterType<F>, ...args: Parameters<F>) {
-    const context = this
+  return (...args: TArgs) =>
+    new Promise<Awaited<TResult>>((resolve) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
 
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-    }
-
-    return new Promise<ReturnType<F>>((resolve) => {
       timeoutId = setTimeout(() => {
-        resolve(func.apply(context, args))
+        resolve(func(...args) as Awaited<TResult>)
       }, delay)
     })
-  }
-
-  return debouncedFunction as (...args: Parameters<F>) => ReturnType<F>
 }
 
 export const initBackground = () => {

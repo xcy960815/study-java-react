@@ -1,6 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
+/**
+ * 鼠标在视口中的二维坐标。
+ */
+interface PointerPosition {
+  x: number
+  y: number
+}
+
+/**
+ * 单个瞳孔的渲染参数。
+ */
 interface PupilProps {
+  mousePosition: PointerPosition
   size?: number
   maxDistance?: number
   pupilColor?: string
@@ -8,53 +20,99 @@ interface PupilProps {
   forceLookY?: number
 }
 
+/**
+ * 眼球组件参数。
+ */
+interface EyeBallProps extends PupilProps {
+  pupilSize?: number
+  eyeColor?: string
+  isBlinking?: boolean
+}
+
+/**
+ * 登录页角色动效组件参数。
+ */
+interface AnimatedCharactersProps {
+  isTyping?: boolean
+  showPassword?: boolean
+  passwordLength?: number
+}
+
+/**
+ * 获取当前视口尺寸。
+ * SSR 或首帧无法访问 window 时返回兜底值。
+ */
+const getViewportSize = () => {
+  if (typeof window === 'undefined') {
+    return { width: 1, height: 1 }
+  }
+
+  return {
+    width: window.innerWidth || 1,
+    height: window.innerHeight || 1,
+  }
+}
+
+/**
+ * 生成角色初始朝向所需的中心点坐标。
+ */
+const createInitialPointerPosition = (): PointerPosition => {
+  const { width, height } = getViewportSize()
+
+  return {
+    x: width / 2,
+    y: height / 2,
+  }
+}
+
+/**
+ * 将数值限制在指定区间。
+ *
+ * @param value 原始值
+ * @param min 最小值
+ * @param max 最大值
+ */
+const clamp = (value: number, min: number, max: number) => {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * 将鼠标位置转换为角色可用的相对偏移量。
+ *
+ * @param mousePosition 鼠标坐标
+ * @param maxX X 轴最大偏移
+ * @param maxY Y 轴最大偏移
+ */
+const calculateViewportOffset = (mousePosition: PointerPosition, maxX: number, maxY: number) => {
+  const { width, height } = getViewportSize()
+  const normalizedX = clamp((mousePosition.x / width - 0.5) * 2, -1, 1)
+  const normalizedY = clamp((mousePosition.y / height - 0.5) * 2, -1, 1)
+
+  return {
+    x: clamp(normalizedX * maxX, -maxX, maxX),
+    y: clamp(normalizedY * maxY, -maxY, maxY),
+  }
+}
+
+/**
+ * 单个瞳孔组件。
+ * 支持跟随鼠标或根据外部状态强制指定朝向。
+ */
 function Pupil({
+  mousePosition,
   size = 12,
   maxDistance = 5,
   pupilColor = '#2d2d2d',
   forceLookX,
   forceLookY,
 }: PupilProps) {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const pupilRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      setMousePosition({ x: event.clientX, y: event.clientY })
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
-
-  const calculatePupilPosition = () => {
-    if (!pupilRef.current) {
-      return { x: 0, y: 0 }
-    }
-
-    if (forceLookX !== undefined && forceLookY !== undefined) {
-      return { x: forceLookX, y: forceLookY }
-    }
-
-    const pupilRect = pupilRef.current.getBoundingClientRect()
-    const centerX = pupilRect.left + pupilRect.width / 2
-    const centerY = pupilRect.top + pupilRect.height / 2
-    const deltaX = mousePosition.x - centerX
-    const deltaY = mousePosition.y - centerY
-    const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
-    const angle = Math.atan2(deltaY, deltaX)
-
-    return {
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-    }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  const pupilPosition =
+    forceLookX !== undefined && forceLookY !== undefined
+      ? { x: forceLookX, y: forceLookY }
+      : calculateViewportOffset(mousePosition, maxDistance, maxDistance * 0.85)
 
   return (
     <div
-      ref={pupilRef}
       className="rounded-full"
       style={{
         width: `${size}px`,
@@ -67,18 +125,12 @@ function Pupil({
   )
 }
 
-interface EyeBallProps {
-  size?: number
-  pupilSize?: number
-  maxDistance?: number
-  eyeColor?: string
-  pupilColor?: string
-  isBlinking?: boolean
-  forceLookX?: number
-  forceLookY?: number
-}
-
+/**
+ * 眼球组件。
+ * 在普通跟随、强制朝向和眨眼三种状态之间切换。
+ */
 function EyeBall({
+  mousePosition,
   size = 48,
   pupilSize = 16,
   maxDistance = 10,
@@ -88,46 +140,13 @@ function EyeBall({
   forceLookX,
   forceLookY,
 }: EyeBallProps) {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const eyeRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      setMousePosition({ x: event.clientX, y: event.clientY })
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
-
-  const calculatePupilPosition = () => {
-    if (!eyeRef.current) {
-      return { x: 0, y: 0 }
-    }
-
-    if (forceLookX !== undefined && forceLookY !== undefined) {
-      return { x: forceLookX, y: forceLookY }
-    }
-
-    const eyeRect = eyeRef.current.getBoundingClientRect()
-    const centerX = eyeRect.left + eyeRect.width / 2
-    const centerY = eyeRect.top + eyeRect.height / 2
-    const deltaX = mousePosition.x - centerX
-    const deltaY = mousePosition.y - centerY
-    const distance = Math.min(Math.sqrt(deltaX ** 2 + deltaY ** 2), maxDistance)
-    const angle = Math.atan2(deltaY, deltaX)
-
-    return {
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-    }
-  }
-
-  const pupilPosition = calculatePupilPosition()
+  const pupilPosition =
+    forceLookX !== undefined && forceLookY !== undefined
+      ? { x: forceLookX, y: forceLookY }
+      : calculateViewportOffset(mousePosition, maxDistance, maxDistance)
 
   return (
     <div
-      ref={eyeRef}
       className="flex items-center justify-center overflow-hidden rounded-full transition-all duration-150"
       style={{
         width: `${size}px`,
@@ -151,12 +170,9 @@ function EyeBall({
   )
 }
 
-interface AnimatedCharactersProps {
-  isTyping?: boolean
-  showPassword?: boolean
-  passwordLength?: number
-}
-
+/**
+ * 生成随机眨眼状态，给角色增加更自然的生命感。
+ */
 function useBlinking() {
   const [isBlinking, setIsBlinking] = useState(false)
 
@@ -192,18 +208,20 @@ function useBlinking() {
   return isBlinking
 }
 
+/**
+ * 登录页角色动效组件。
+ * 通过鼠标位置、输入状态和密码显隐状态驱动角色姿态变化。
+ *
+ * @param isTyping 是否正在输入
+ * @param showPassword 是否显示密码
+ * @param passwordLength 当前密码长度
+ */
 export function AnimatedCharacters({
   isTyping = false,
   showPassword = false,
   passwordLength = 0,
 }: AnimatedCharactersProps) {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [isLookingAtEachOther, setIsLookingAtEachOther] = useState(false)
-  const [isPurplePeeking, setIsPurplePeeking] = useState(false)
-  const purpleRef = useRef<HTMLDivElement>(null)
-  const blackRef = useRef<HTMLDivElement>(null)
-  const yellowRef = useRef<HTMLDivElement>(null)
-  const orangeRef = useRef<HTMLDivElement>(null)
+  const [mousePosition, setMousePosition] = useState(createInitialPointerPosition)
   const isPurpleBlinking = useBlinking()
   const isBlackBlinking = useBlinking()
 
@@ -216,83 +234,39 @@ export function AnimatedCharacters({
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  useEffect(() => {
-    if (!isTyping) {
-      setIsLookingAtEachOther(false)
-      return
-    }
-
-    setIsLookingAtEachOther(true)
-    const timeoutId = window.setTimeout(() => {
-      setIsLookingAtEachOther(false)
-    }, 800)
-
-    return () => clearTimeout(timeoutId)
-  }, [isTyping])
-
-  useEffect(() => {
-    if (!(passwordLength > 0 && showPassword)) {
-      setIsPurplePeeking(false)
-      return
-    }
-
-    let nextPeekTimeoutId: number | undefined
-    let resetPeekTimeoutId: number | undefined
-
-    const schedulePeek = () => {
-      nextPeekTimeoutId = window.setTimeout(
-        () => {
-          setIsPurplePeeking(true)
-          resetPeekTimeoutId = window.setTimeout(() => {
-            setIsPurplePeeking(false)
-            schedulePeek()
-          }, 800)
-        },
-        Math.random() * 3000 + 2000
-      )
-    }
-
-    schedulePeek()
-
-    return () => {
-      if (nextPeekTimeoutId) {
-        window.clearTimeout(nextPeekTimeoutId)
-      }
-      if (resetPeekTimeoutId) {
-        window.clearTimeout(resetPeekTimeoutId)
-      }
-    }
-  }, [passwordLength, showPassword])
-
-  const calculatePosition = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!ref.current) {
-      return { faceX: 0, faceY: 0, bodySkew: 0 }
-    }
-
-    const rect = ref.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 3
-    const deltaX = mousePosition.x - centerX
-    const deltaY = mousePosition.y - centerY
+  /**
+   * 根据鼠标位置计算角色五官和身体的轻微偏转。
+   *
+   * @param horizontalScale 横向跟随强度
+   * @param verticalScale 纵向跟随强度
+   * @param skewScale 身体倾斜强度
+   */
+  const calculateCharacterMotion = (
+    horizontalScale: number,
+    verticalScale: number,
+    skewScale: number
+  ) => {
+    const offset = calculateViewportOffset(mousePosition, 15, 10)
 
     return {
-      faceX: Math.max(-15, Math.min(15, deltaX / 20)),
-      faceY: Math.max(-10, Math.min(10, deltaY / 30)),
-      bodySkew: Math.max(-6, Math.min(6, -deltaX / 120)),
+      faceX: offset.x * horizontalScale,
+      faceY: offset.y * verticalScale,
+      bodySkew: clamp((-offset.x / 15) * 6 * skewScale, -6, 6),
     }
   }
 
-  const purplePosition = calculatePosition(purpleRef)
-  const blackPosition = calculatePosition(blackRef)
-  const yellowPosition = calculatePosition(yellowRef)
-  const orangePosition = calculatePosition(orangeRef)
+  const purplePosition = calculateCharacterMotion(1, 0.9, 0.9)
+  const blackPosition = calculateCharacterMotion(0.7, 0.7, 1.2)
+  const yellowPosition = calculateCharacterMotion(0.85, 0.8, 0.7)
+  const orangePosition = calculateCharacterMotion(1.05, 0.85, 0.6)
   const isHidingPassword = passwordLength > 0 && !showPassword
   const isShowingPassword = passwordLength > 0 && showPassword
+  const isLookingAtEachOther = isTyping
+  const isPurplePeeking = isShowingPassword
 
   return (
     <div className="relative mx-auto h-[320px] w-[440px] max-w-full xl:h-[400px] xl:w-[550px]">
       <div
-        ref={purpleRef}
         className="absolute bottom-0 transition-all duration-700 ease-in-out"
         style={{
           left: '14%',
@@ -325,6 +299,7 @@ export function AnimatedCharacters({
           }}
         >
           <EyeBall
+            mousePosition={mousePosition}
             size={18}
             pupilSize={7}
             maxDistance={5}
@@ -337,6 +312,7 @@ export function AnimatedCharacters({
             }
           />
           <EyeBall
+            mousePosition={mousePosition}
             size={18}
             pupilSize={7}
             maxDistance={5}
@@ -352,7 +328,6 @@ export function AnimatedCharacters({
       </div>
 
       <div
-        ref={blackRef}
         className="absolute bottom-0 transition-all duration-700 ease-in-out"
         style={{
           left: '43.6%',
@@ -387,6 +362,7 @@ export function AnimatedCharacters({
           }}
         >
           <EyeBall
+            mousePosition={mousePosition}
             size={16}
             pupilSize={6}
             maxDistance={4}
@@ -395,6 +371,7 @@ export function AnimatedCharacters({
             forceLookY={isShowingPassword ? -4 : isLookingAtEachOther ? -4 : undefined}
           />
           <EyeBall
+            mousePosition={mousePosition}
             size={16}
             pupilSize={6}
             maxDistance={4}
@@ -406,7 +383,6 @@ export function AnimatedCharacters({
       </div>
 
       <div
-        ref={orangeRef}
         className="absolute bottom-0 transition-all duration-700 ease-in-out"
         style={{
           left: '0',
@@ -427,12 +403,14 @@ export function AnimatedCharacters({
           }}
         >
           <Pupil
+            mousePosition={mousePosition}
             size={12}
             maxDistance={5}
             forceLookX={isShowingPassword ? -5 : undefined}
             forceLookY={isShowingPassword ? -4 : undefined}
           />
           <Pupil
+            mousePosition={mousePosition}
             size={12}
             maxDistance={5}
             forceLookX={isShowingPassword ? -5 : undefined}
@@ -442,7 +420,6 @@ export function AnimatedCharacters({
       </div>
 
       <div
-        ref={yellowRef}
         className="absolute bottom-0 transition-all duration-700 ease-in-out"
         style={{
           left: '56.4%',
@@ -463,12 +440,14 @@ export function AnimatedCharacters({
           }}
         >
           <Pupil
+            mousePosition={mousePosition}
             size={12}
             maxDistance={5}
             forceLookX={isShowingPassword ? -5 : undefined}
             forceLookY={isShowingPassword ? -4 : undefined}
           />
           <Pupil
+            mousePosition={mousePosition}
             size={12}
             maxDistance={5}
             forceLookX={isShowingPassword ? -5 : undefined}

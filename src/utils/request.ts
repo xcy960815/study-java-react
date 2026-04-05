@@ -1,25 +1,85 @@
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { message } from 'antd'
 import { eventEmitter } from './event-emits'
-import { getToken, removeToken, getRefreshToken, setToken, setRefreshToken } from './token'
+import { clearAuthTokens, getRefreshToken, getToken, setRefreshToken, setToken } from './token'
 import { loginEnum } from '@/enums'
 
 // Directly use relative URL or env proxy
 const baseUrl = import.meta.env.VITE_API_DOMAIN_PREFIX || ''
 
-const withoutAuthorizationUrls = ['/login']
+/**
+ * 不需要自动附带 Authorization 头的接口列表。
+ */
+const withoutAuthorizationUrls = ['/login', '/register', '/captcha', '/refreshToken']
 
 let isRefreshing = false
-let requests: Function[] = []
+
+/**
+ * 刷新 Token 接口的返回结构。
+ */
+interface RefreshResponse {
+  token: string
+  refreshToken: string
+}
+
+/**
+ * 刷新 Token 期间排队中的请求。
+ */
+interface QueuedRequest {
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}
+
+let requests: QueuedRequest[] = []
 
 interface RetryRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
 }
 
+/**
+ * 给请求头补充 Bearer Token。
+ *
+ * @param config Axios 请求配置
+ * @param token 当前 access token
+ */
+const setAuthorizationHeader = (config: InternalAxiosRequestConfig, token: string) => {
+  config.headers.Authorization = `Bearer ${token}`
+}
+
+/**
+ * 在刷新成功后重放排队中的请求。
+ *
+ * @param token 新的 access token
+ */
+const resolveQueuedRequests = (token: string) => {
+  requests.forEach(({ resolve }) => resolve(token))
+  requests = []
+}
+
+/**
+ * 在刷新失败后统一拒绝排队中的请求。
+ *
+ * @param error 刷新失败原因
+ */
+const rejectQueuedRequests = (error: unknown) => {
+  requests.forEach(({ reject }) => reject(error))
+  requests = []
+}
+
+/**
+ * 统一处理无效会话：
+ * 清理本地登录态、终止排队请求，并广播 token 失效事件。
+ */
+const handleInvalidSession = () => {
+  clearAuthTokens()
+  rejectQueuedRequests(new Error('Authentication expired'))
+  eventEmitter.emit('token-invalid')
+}
+
 axios.defaults.withCredentials = false
 
 /**
- * 带有拦截器及 Token 刷新处理机制的全局 Axios 实例。
+ * 带有拦截器及 Token 刷新处理机制的项目统一 Axios 实例。
  * 用于业务代码侧发起 Restful API 请求。
  */
 const request = axios.create({
@@ -28,13 +88,13 @@ const request = axios.create({
 })
 
 request.interceptors.request.use(
-  async (config) => {
-    const token = await getToken()
+  (config) => {
+    const token = getToken()
     const isWithoutAuthorizationUrl = !withoutAuthorizationUrls.some((url) =>
       config.url?.includes(url)
     )
     if (isWithoutAuthorizationUrl && token) {
-      config.headers['Authorization'] = `Bearer ${token}`
+      setAuthorizationHeader(config, token)
     }
 
     return config
@@ -61,17 +121,19 @@ request.interceptors.response.use(
         const originalRequest = error.config as RetryRequestConfig
 
         if (originalRequest.url?.includes('/refreshToken')) {
-          await removeToken()
-          eventEmitter.emit('token-invalid')
+          handleInvalidSession()
           return Promise.reject(error)
         }
 
         if (!originalRequest._retry) {
           if (isRefreshing) {
-            return new Promise((resolve) => {
-              requests.push((token: string) => {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`
-                resolve(request(originalRequest))
+            return new Promise((resolve, reject) => {
+              requests.push({
+                resolve: (token: string) => {
+                  setAuthorizationHeader(originalRequest, token)
+                  resolve(request(originalRequest))
+                },
+                reject,
               })
             })
           }
@@ -80,23 +142,30 @@ request.interceptors.response.use(
           isRefreshing = true
 
           try {
-            const refreshToken = await getRefreshToken()
+            const refreshToken = getRefreshToken()
 
-            const { data } = await axios.post(baseUrl + '/refreshToken', { refreshToken })
+            if (!refreshToken) {
+              handleInvalidSession()
+              return Promise.reject(error)
+            }
+
+            const { data } = await axios.post<RefreshResponse>(baseUrl + '/refreshToken', {
+              refreshToken,
+            })
 
             if (data && data.token) {
-              await setToken(data.token)
-              await setRefreshToken(data.refreshToken)
+              setToken(data.token)
+              setRefreshToken(data.refreshToken)
 
-              requests.forEach((cb) => cb(data.token))
-              requests = []
+              resolveQueuedRequests(data.token)
 
-              originalRequest.headers['Authorization'] = `Bearer ${data.token}`
+              setAuthorizationHeader(originalRequest, data.token)
               return request(originalRequest)
             }
+
+            handleInvalidSession()
           } catch (refreshError) {
-            await removeToken()
-            eventEmitter.emit('token-invalid')
+            handleInvalidSession()
             return Promise.reject(refreshError)
           } finally {
             isRefreshing = false

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Form,
   Input,
@@ -39,6 +39,7 @@ type PaginationState = {
 }
 
 const DataDictionaryList: React.FC = () => {
+  const defaultPageSize = 10
   // 搜索表单
   const [searchForm] = Form.useForm<DataDictionarySearchValues>()
 
@@ -66,44 +67,47 @@ const DataDictionaryList: React.FC = () => {
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
-  useEffect(() => {
-    fetchDataDictList()
-  }, [])
-
   // 请求数据字典列表
-  const fetchDataDictList = async (page = pagination.current, size = pagination.pageSize) => {
-    setLoading(true)
-    try {
-      const searchValues = searchForm.getFieldsValue()
-      const res = await getDataDictList({
-        pageNum: page,
-        pageSize: size,
-        ...searchValues,
-      })
-      setTableData(res.data || [])
-      setTotal(res.total || 0)
-      setPagination({ current: page, pageSize: size })
-    } catch (e) {
-      console.error('Failed to fetch data dict list')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchDataDictList = useCallback(
+    async (page: number, size: number) => {
+      setLoading(true)
+      try {
+        const searchValues = searchForm.getFieldsValue()
+        const res = await getDataDictList({
+          pageNum: page,
+          pageSize: size,
+          ...searchValues,
+        })
+        setTableData(res.data || [])
+        setTotal(res.total || 0)
+        setPagination({ current: page, pageSize: size })
+      } catch {
+        message.error('获取数据字典失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
+
+  useEffect(() => {
+    void fetchDataDictList(1, defaultPageSize)
+  }, [fetchDataDictList])
 
   // 搜索
   const handleSearch = () => {
-    fetchDataDictList(1, pagination.pageSize)
+    void fetchDataDictList(1, pagination.pageSize)
   }
 
   // 重置
   const handleReset = () => {
     searchForm.resetFields()
-    fetchDataDictList(1, 10)
+    void fetchDataDictList(1, defaultPageSize)
   }
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchDataDictList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
+    void fetchDataDictList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增字典
@@ -126,9 +130,9 @@ const DataDictionaryList: React.FC = () => {
     try {
       await deleteDataDict(record.id)
       message.success('删除成功')
-      fetchDataDictList()
-    } catch (e) {
-      console.error('Failed to delete')
+      await fetchDataDictList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('删除字典失败，请稍后重试。')
     }
   }
 
@@ -145,9 +149,9 @@ const DataDictionaryList: React.FC = () => {
       }
       message.success('操作成功')
       setModalVisible(false)
-      fetchDataDictList()
-    } catch (e) {
-      console.error('Validation failed', e)
+      await fetchDataDictList(pagination.current, pagination.pageSize)
+    } catch (error) {
+      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }
@@ -286,6 +290,7 @@ const DataDictionaryList: React.FC = () => {
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          defaultPageSize,
           showQuickJumper: true,
           showTotal: (t) => `共 ${t} 条`,
         }}

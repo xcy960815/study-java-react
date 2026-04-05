@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Form, Input, Select, Button, Table, Space, Tag, Modal, Popconfirm, message } from 'antd'
 import type { TableColumnsType, TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
@@ -19,6 +19,7 @@ type PaginationState = {
 }
 
 const UserList: React.FC = () => {
+  const defaultPageSize = 10
   // 表单
   const [searchForm] = Form.useForm<UserSearchValues>()
 
@@ -49,55 +50,58 @@ const UserList: React.FC = () => {
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
-  useEffect(() => {
-    fetchRoleList()
-    fetchUserList()
-  }, [])
-
   // 请求角色列表
-  const fetchRoleList = async () => {
+  const fetchRoleList = useCallback(async () => {
     try {
       const roles = await getAllRoleList()
       setRoleList(roles || [])
-    } catch (e) {
-      console.error('Failed to fetch roles')
+    } catch {
+      message.error('获取角色列表失败，请稍后重试。')
     }
-  }
+  }, [])
 
   // 请求用户列表
-  const fetchUserList = async (page = pagination.current, size = pagination.pageSize) => {
-    setLoading(true)
-    try {
-      const searchValues = searchForm.getFieldsValue()
-      const res = await getUserList({
-        pageNum: page,
-        pageSize: size,
-        ...searchValues,
-      })
-      setTableData(res.data || [])
-      setTotal(res.total || 0)
-      setPagination({ current: page, pageSize: size })
-    } catch (e) {
-      console.error('Failed to fetch user list')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchUserList = useCallback(
+    async (page: number, size: number) => {
+      setLoading(true)
+      try {
+        const searchValues = searchForm.getFieldsValue()
+        const res = await getUserList({
+          pageNum: page,
+          pageSize: size,
+          ...searchValues,
+        })
+        setTableData(res.data || [])
+        setTotal(res.total || 0)
+        setPagination({ current: page, pageSize: size })
+      } catch {
+        message.error('获取用户列表失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
+
+  useEffect(() => {
+    void fetchRoleList()
+    void fetchUserList(1, defaultPageSize)
+  }, [fetchRoleList, fetchUserList])
 
   // 搜索
   const handleSearch = () => {
-    fetchUserList(1, pagination.pageSize)
+    void fetchUserList(1, pagination.pageSize)
   }
 
   // 重置
   const handleReset = () => {
     searchForm.resetFields()
-    fetchUserList(1, pagination.pageSize)
+    void fetchUserList(1, pagination.pageSize)
   }
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchUserList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
+    void fetchUserList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   const handleAdd = () => {
@@ -120,9 +124,9 @@ const UserList: React.FC = () => {
     try {
       await deleteUser(record)
       message.success('删除成功')
-      fetchUserList()
-    } catch (e) {
-      console.error('Failed to delete')
+      await fetchUserList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('删除用户失败，请稍后重试。')
     }
   }
 
@@ -140,7 +144,7 @@ const UserList: React.FC = () => {
         message.success('修改成功')
       }
       setModalVisible(false)
-      fetchUserList()
+      await fetchUserList(pagination.current, pagination.pageSize)
     } catch (e) {
       console.error('Validation failed', e)
     } finally {
@@ -257,6 +261,7 @@ const UserList: React.FC = () => {
           pageSize: pagination.pageSize,
           total: total,
           showSizeChanger: true,
+          defaultPageSize,
           showQuickJumper: true,
           showTotal: (total) => `共 ${total} 条`,
         }}
@@ -303,6 +308,9 @@ const UserList: React.FC = () => {
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item name="age" label="用户年龄">
+            <Input placeholder="请输入用户年龄" type="number" />
           </Form.Item>
           <Form.Item
             name="introduceSign"

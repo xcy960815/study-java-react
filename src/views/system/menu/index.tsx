@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   Form,
   Input,
@@ -56,6 +56,7 @@ const buildTreeData = (tree: MenuVo[]): TreeNode[] => {
 }
 
 const MenuList: React.FC = () => {
+  const defaultPageSize = 10
   // 搜索表单
   const [searchForm] = Form.useForm<MenuSearchValues>()
 
@@ -86,55 +87,58 @@ const MenuList: React.FC = () => {
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
-  useEffect(() => {
-    fetchMenuList()
-    fetchParentTree()
-  }, [])
-
   // 请求菜单树列表（分页）
-  const fetchMenuList = async (page = pagination.current, size = pagination.pageSize) => {
-    setLoading(true)
-    try {
-      const searchValues = searchForm.getFieldsValue()
-      const res = await getMenuTree({
-        pageNum: page,
-        pageSize: size,
-        ...searchValues,
-      })
-      setTreeData(res.data || [])
-      setTotal(res.total || 0)
-      setPagination({ current: page, pageSize: size })
-    } catch (e) {
-      console.error('Failed to fetch menu list')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchMenuList = useCallback(
+    async (page: number, size: number) => {
+      setLoading(true)
+      try {
+        const searchValues = searchForm.getFieldsValue()
+        const res = await getMenuTree({
+          pageNum: page,
+          pageSize: size,
+          ...searchValues,
+        })
+        setTreeData(res.data || [])
+        setTotal(res.total || 0)
+        setPagination({ current: page, pageSize: size })
+      } catch {
+        message.error('获取菜单列表失败，请稍后重试。')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [searchForm]
+  )
 
   // 请求父菜单树（全量）
-  const fetchParentTree = async () => {
+  const fetchParentTree = useCallback(async () => {
     try {
       const result = await getAllMenuTree()
       setParentTreeData(filterDirTree(result || []))
-    } catch (e) {
-      console.error('Failed to fetch parent tree')
+    } catch {
+      message.error('获取父级菜单失败，请稍后重试。')
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchMenuList(1, defaultPageSize)
+    void fetchParentTree()
+  }, [fetchMenuList, fetchParentTree])
 
   // 搜索
   const handleSearch = () => {
-    fetchMenuList(1, pagination.pageSize)
+    void fetchMenuList(1, pagination.pageSize)
   }
 
   // 重置
   const handleReset = () => {
     searchForm.resetFields()
-    fetchMenuList(1, pagination.pageSize)
+    void fetchMenuList(1, pagination.pageSize)
   }
 
   // 表格切换
   const handleTableChange = (pag: TablePaginationConfig) => {
-    fetchMenuList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
+    void fetchMenuList(pag.current ?? pagination.current, pag.pageSize ?? pagination.pageSize)
   }
 
   // 新增菜单
@@ -172,9 +176,9 @@ const MenuList: React.FC = () => {
     try {
       await deleteMenu(record as MenuDto)
       message.success('删除成功')
-      fetchMenuList()
-    } catch (e) {
-      console.error('Failed to delete')
+      await fetchMenuList(pagination.current, pagination.pageSize)
+    } catch {
+      message.error('删除菜单失败，请稍后重试。')
     }
   }
 
@@ -191,10 +195,10 @@ const MenuList: React.FC = () => {
       }
       message.success('操作成功')
       setModalVisible(false)
-      fetchMenuList()
-      fetchParentTree()
-    } catch (e) {
-      console.error('Validation failed', e)
+      await fetchMenuList(pagination.current, pagination.pageSize)
+      await fetchParentTree()
+    } catch (error) {
+      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }
@@ -297,6 +301,7 @@ const MenuList: React.FC = () => {
           pageSize: pagination.pageSize,
           total,
           showSizeChanger: true,
+          defaultPageSize,
           showQuickJumper: true,
           showTotal: (t) => `共 ${t} 条`,
         }}
