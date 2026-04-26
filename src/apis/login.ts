@@ -3,6 +3,7 @@ import { request } from '@/utils/request'
 export interface LoginRequestDto {
   username?: string
   password?: string
+  captchaId?: string
   captcha?: string
   rememberMe?: boolean
 }
@@ -11,7 +12,13 @@ export interface RegisterRequestDto {
   username?: string
   password?: string
   confirmPassword?: string
+  captchaId?: string
   captcha?: string
+}
+
+export interface CaptchaResponseVo {
+  captchaId: string
+  captchaImage: string
 }
 
 export interface LoginResponseVo {
@@ -55,7 +62,7 @@ export function logout(): Promise<void> {
  * 获取验证码
  * @returns
  */
-export function getCaptcha(): Promise<string> {
+export function getCaptcha(): Promise<CaptchaResponseVo> {
   const url = `/captcha`
-  return request.get<string, string>(url)
+  return request.get<CaptchaResponseVo, CaptchaResponseVo>(url)
 }

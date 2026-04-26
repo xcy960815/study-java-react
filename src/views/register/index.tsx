@@ -7,7 +7,6 @@ import {
   ArrowRightOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
-import md5 from 'md5'
 import { loginModule } from '@/apis'
 import type { RegisterRequestDto } from '@/apis/login'
 import { AnimatedCharacters } from '@/components/ui/animated-characters'
@@ -18,6 +17,7 @@ const Register: React.FC = () => {
   const navigate = useNavigate()
   const [registering, setRegistering] = useState(false)
   const [captchaUrl, setCaptchaUrl] = useState('')
+  const [captchaId, setCaptchaId] = useState('')
   const [captchaLoading, setCaptchaLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -50,7 +50,8 @@ const Register: React.FC = () => {
     setCaptchaLoading(true)
     try {
       const captchaRes = await loginModule.getCaptcha()
-      setCaptchaUrl(captchaRes)
+      setCaptchaId(captchaRes.captchaId)
+      setCaptchaUrl(captchaRes.captchaImage)
     } catch {
       message.error('验证码获取失败，请稍后重试。')
     } finally {
@@ -63,10 +64,7 @@ const Register: React.FC = () => {
     setErrorMessage('')
     try {
       const registerData = { ...values }
-      if (registerData.password) {
-        registerData.password = md5(registerData.password)
-        registerData.confirmPassword = md5(registerData.confirmPassword!)
-      }
+      registerData.captchaId = captchaId
 
       await loginModule.register(registerData)
       message.success('注册成功，请登录')

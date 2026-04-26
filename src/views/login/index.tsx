@@ -7,7 +7,6 @@ import {
   ArrowRightOutlined,
 } from '@ant-design/icons'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import md5 from 'md5'
 import { useLoginStore } from '@/store'
 import { loginModule } from '@/apis'
 import type { LoginRequestDto } from '@/apis/login'
@@ -20,6 +19,7 @@ const Login: React.FC = () => {
   const location = useLocation()
   const [logining, setLogining] = useState(false)
   const [captchaUrl, setCaptchaUrl] = useState('')
+  const [captchaId, setCaptchaId] = useState('')
   const [captchaLoading, setCaptchaLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -49,7 +49,8 @@ const Login: React.FC = () => {
     setCaptchaLoading(true)
     try {
       const captchaRes = await loginModule.getCaptcha()
-      setCaptchaUrl(captchaRes)
+      setCaptchaId(captchaRes.captchaId)
+      setCaptchaUrl(captchaRes.captchaImage)
     } catch {
       message.error('验证码获取失败，请稍后重试。')
     } finally {
@@ -62,9 +63,7 @@ const Login: React.FC = () => {
     setErrorMessage('')
     try {
       const loginData = { ...values }
-      if (loginData.password) {
-        loginData.password = md5(loginData.password)
-      }
+      loginData.captchaId = captchaId
       await login(loginData)
       navigate(redirectTo, { replace: true })
     } catch {
