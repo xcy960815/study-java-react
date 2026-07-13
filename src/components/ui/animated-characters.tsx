@@ -265,7 +265,7 @@ export function AnimatedCharacters({
   const isPurplePeeking = isShowingPassword
 
   return (
-    <div className="relative mx-auto h-[320px] w-[440px] max-w-full xl:h-[400px] xl:w-[550px]">
+    <div className="relative mx-auto h-80 w-110 max-w-full xl:h-100 xl:w-137.5">
       <div
         className="absolute bottom-0 transition-all duration-700 ease-in-out"
         style={{

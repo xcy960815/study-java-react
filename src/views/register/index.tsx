@@ -84,13 +84,13 @@ const Register: React.FC = () => {
 
   return (
     <div className="register-page relative h-screen overflow-hidden bg-[#f6f0ff] text-slate-900">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(108,63,245,0.24),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(255,155,107,0.28),_transparent_26%),linear-gradient(135deg,_#fff8ef_0%,_#f4f2ff_48%,_#eef7ff_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(108,63,245,0.24),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,155,107,0.28),transparent_26%),linear-gradient(135deg,#fff8ef_0%,#f4f2ff_48%,#eef7ff_100%)]" />
       <div className="absolute left-[-10%] top-[-10%] h-72 w-72 rounded-full bg-[#6c3ff5]/18 blur-3xl" />
       <div className="absolute bottom-[-14%] right-[-8%] h-80 w-80 rounded-full bg-[#ff9b6b]/24 blur-3xl" />
 
       <div className="relative grid h-full lg:grid-cols-[1.08fr_0.92fr]">
         <section className="relative hidden h-full overflow-hidden bg-[#130c2f] px-12 py-8 text-white lg:flex lg:flex-col">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,_rgba(232,215,84,0.20),_transparent_28%),radial-gradient(circle_at_85%_18%,_rgba(108,63,245,0.48),_transparent_28%),radial-gradient(circle_at_72%_82%,_rgba(255,155,107,0.30),_transparent_26%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(232,215,84,0.20),transparent_28%),radial-gradient(circle_at_85%_18%,rgba(108,63,245,0.48),transparent_28%),radial-gradient(circle_at_72%_82%,rgba(255,155,107,0.30),transparent_26%)]" />
           <div className="absolute left-10 top-14 h-28 w-28 rounded-full border border-white/10 bg-white/6 blur-2xl" />
           <div className="absolute bottom-8 right-10 h-52 w-52 rounded-full border border-white/10 bg-[#6c3ff5]/20 blur-3xl" />
 
@@ -129,7 +129,7 @@ const Register: React.FC = () => {
         </section>
 
         <section className="relative flex h-full items-center justify-center overflow-hidden px-5 py-4 sm:px-8 lg:px-12">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-[480px] overflow-y-auto rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_32px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:max-h-[calc(100vh-2.5rem)] sm:p-7">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-120 overflow-y-auto rounded-4xl border border-white/70 bg-white/82 p-5 shadow-[0_32px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:max-h-[calc(100vh-2.5rem)] sm:p-7">
             <div className="mb-6">
               <span className="inline-flex rounded-full bg-[#efe7ff] px-3 py-1 text-xs font-semibold tracking-[0.22em] uppercase text-[#6c3ff5]">
                 Join In
@@ -171,7 +171,7 @@ const Register: React.FC = () => {
                   autoComplete="username"
                   onFocus={() => setIsTyping(true)}
                   onBlur={() => setIsTyping(false)}
-                  className="!h-13 !rounded-2xl !border-slate-200 !bg-slate-50 !px-4 !text-slate-900 placeholder:!text-slate-400 hover:!border-[#6c3ff5] focus-within:!border-[#6c3ff5] focus-within:!shadow-[0_0_0_4px_rgba(108,63,245,0.12)]"
+                  className="h-13! rounded-2xl! border-slate-200! bg-slate-50! px-4! text-slate-900! placeholder:text-slate-400! hover:border-[#6c3ff5]! focus-within:border-[#6c3ff5]! focus-within:shadow-[0_0_0_4px_rgba(108,63,245,0.12)]!"
                 />
               </Form.Item>
 
@@ -196,7 +196,7 @@ const Register: React.FC = () => {
                     visible: showPassword,
                     onVisibleChange: setShowPassword,
                   }}
-                  className="!h-13 !rounded-2xl !border-slate-200 !bg-slate-50 !px-4 !text-slate-900 placeholder:!text-slate-400 hover:!border-[#6c3ff5] focus-within:!border-[#6c3ff5] focus-within:!shadow-[0_0_0_4px_rgba(108,63,245,0.12)]"
+                  className="h-13! rounded-2xl! border-slate-200! bg-slate-50! px-4! text-slate-900! placeholder:text-slate-400! hover:border-[#6c3ff5]! focus-within:border-[#6c3ff5]! focus-within:shadow-[0_0_0_4px_rgba(108,63,245,0.12)]!"
                 />
               </Form.Item>
 
@@ -230,7 +230,7 @@ const Register: React.FC = () => {
                     visible: showConfirmPassword,
                     onVisibleChange: setShowConfirmPassword,
                   }}
-                  className="!h-13 !rounded-2xl !border-slate-200 !bg-slate-50 !px-4 !text-slate-900 placeholder:!text-slate-400 hover:!border-[#6c3ff5] focus-within:!border-[#6c3ff5] focus-within:!shadow-[0_0_0_4px_rgba(108,63,245,0.12)]"
+                  className="h-13! rounded-2xl! border-slate-200! bg-slate-50! px-4! text-slate-900! placeholder:text-slate-400! hover:border-[#6c3ff5]! focus-within:border-[#6c3ff5]! focus-within:shadow-[0_0_0_4px_rgba(108,63,245,0.12)]!"
                 />
               </Form.Item>
 
@@ -253,7 +253,7 @@ const Register: React.FC = () => {
                     placeholder="请输入验证码"
                     autoComplete="off"
                     maxLength={4}
-                    className="!h-13 !rounded-2xl !border-slate-200 !bg-slate-50 !px-4 !text-slate-900 placeholder:!text-slate-400 hover:!border-[#6c3ff5] focus-within:!border-[#6c3ff5] focus-within:!shadow-[0_0_0_4px_rgba(108,63,245,0.12)]"
+                    className="h-13! rounded-2xl! border-slate-200! bg-slate-50! px-4! text-slate-900! placeholder:text-slate-400! hover:border-[#6c3ff5]! focus-within:border-[#6c3ff5]! focus-within:shadow-[0_0_0_4px_rgba(108,63,245,0.12)]!"
                   />
                   <button
                     type="button"
