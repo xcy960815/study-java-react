@@ -1,271 +1,387 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import dayjs, { type Dayjs } from 'dayjs'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import axios from 'axios'
 import {
-  DatePicker,
-  Table,
+  Alert,
   Button,
+  Descriptions,
+  Drawer,
   Form,
   Input,
   InputNumber,
-  Select,
-  Space,
-  Tag,
+  message,
   Modal,
   Pagination,
-  message,
+  Radio,
+  Result,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Typography,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { getOrderList, insertOrder, updateOrder, deleteOrder, type OrderVo } from '@/apis/order'
-import type { OrderDto } from '@/apis/order'
-import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
+import { useSearchParams } from 'react-router-dom'
+import {
+  deleteOrder,
+  getOrderDetail,
+  getOrderList,
+  payOrder,
+  transitionOrder,
+  type Order,
+  type OrderQuery,
+  type PaymentResult,
+} from '@/apis/order'
+import {
+  ORDER_ACTION_META,
+  ORDER_ACTIONS_BY_STATUS,
+  ORDER_STATUS_META,
+  PAY_STATUS_META,
+  PAYMENT_TYPE_LABEL,
+  OrderStatus,
+  PaymentType,
+  type PayablePaymentType,
+  type OrderAction,
+} from '@/enums/order'
+import { useLoginStore } from '@/store'
+import { eventEmitter } from '@/utils/event-emits'
+import { hasPermission } from '@/utils/permission'
 
-type OrderSearchValues = Pick<OrderDto, 'orderNo' | 'userId' | 'orderStatus'>
+type OrderSearchValues = Pick<OrderQuery, 'orderNo' | 'userId' | 'orderStatus' | 'payStatus'>
 
-type OrderFormValues = Omit<OrderDto, 'payTime'> & {
-  payTime?: Dayjs
+const formatAmount = (amount: number) => `¥${amount.toFixed(2)}`
+
+const getErrorMessage = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return ''
+  return (error.response?.data as { message?: string } | undefined)?.message || error.message
+}
+
+const OrderStatusTag = ({ status }: { status: OrderStatus }) => {
+  const meta = ORDER_STATUS_META[status]
+  return <Tag color={meta?.color || 'default'}>{meta?.label || `未知状态（${status}）`}</Tag>
+}
+
+const PayStatusTag = ({ status }: { status: Order['payStatus'] }) => {
+  const meta = PAY_STATUS_META[status]
+  return <Tag color={meta?.color || 'default'}>{meta?.label || `未知状态（${status}）`}</Tag>
 }
 
 const OrderPage: React.FC = () => {
-  const defaultPageSize = 10
   const [searchForm] = Form.useForm<OrderSearchValues>()
-  const [editForm] = Form.useForm<OrderFormValues>()
-  /** 表格数据 */
-  const [tableData, setTableData] = useState<OrderVo[]>([])
-  /** 总条数 */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const canQuery = useLoginStore((state) => hasPermission(state.user?.permissions, 'order:query'))
+  const userLoaded = useLoginStore((state) => state.userLoaded)
+  const canEdit = useLoginStore((state) => hasPermission(state.user?.permissions, 'order:edit'))
+  const canRemove = useLoginStore((state) => hasPermission(state.user?.permissions, 'order:remove'))
+  const [tableData, setTableData] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
-  /** 当前页码 */
   const [pageNum, setPageNum] = useState(1)
-  /** 每页条数 */
   const [pageSize, setPageSize] = useState(10)
-  /** 加载状态 */
   const [loading, setLoading] = useState(false)
-  /** 弹窗可见 */
-  const [modalVisible, setModalVisible] = useState(false)
-  /** 弹窗标题 */
-  const [modalTitle, setModalTitle] = useState('')
-  /** 当前编辑记录 */
-  const [editRecord, setEditRecord] = useState<OrderVo | null>(null)
-  /** 订单状态字典 */
-  const [orderStatusOptions, setOrderStatusOptions] = useState<DataDictionaryVo[]>([])
-  /** 支付状态字典 */
-  const [payStatusOptions, setPayStatusOptions] = useState<DataDictionaryVo[]>([])
-  /** 支付方式字典 */
-  const [payTypeOptions, setPayTypeOptions] = useState<DataDictionaryVo[]>([])
+  const [detail, setDetail] = useState<Order | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [payingOrder, setPayingOrder] = useState<Order | null>(null)
+  const [paymentType, setPaymentType] = useState<PayablePaymentType>(PaymentType.WECHAT_PAY)
+  const [paying, setPaying] = useState(false)
+  const [transitioningOrderId, setTransitioningOrderId] = useState<number | null>(null)
+  const [lastPayment, setLastPayment] = useState<PaymentResult | null>(null)
+  const paymentInFlight = useRef(new Set<number>())
+  const transitionInFlight = useRef(new Set<number>())
 
-  /** 获取订单列表 */
   const fetchList = useCallback(
     async (pn: number, ps: number) => {
+      if (!canQuery) return
       setLoading(true)
       try {
-        const values = searchForm.getFieldsValue()
-        const res = await getOrderList({ ...values, pageNum: pn, pageSize: ps })
+        const res = await getOrderList({
+          ...searchForm.getFieldsValue(),
+          isDeleted: 0,
+          pageNum: pn,
+          pageSize: ps,
+        })
         setTableData(res.data)
         setTotal(res.total)
-      } catch {
-        message.error('获取订单列表失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
     },
-    [searchForm]
+    [canQuery, searchForm]
   )
 
-  /** 获取字典数据 */
-  const fetchDicts = useCallback(async () => {
+  const fetchDetail = useCallback(async (orderId: number) => {
+    setDetailLoading(true)
     try {
-      const [orderRes, payStatusRes, payTypeRes] = await Promise.all([
-        getDataDictList({ dictType: 'order_status', status: 1, pageNum: 1, pageSize: 100 }),
-        getDataDictList({ dictType: 'pay_status', status: 1, pageNum: 1, pageSize: 100 }),
-        getDataDictList({ dictType: 'pay_type', status: 1, pageNum: 1, pageSize: 100 }),
-      ])
-      setOrderStatusOptions(orderRes.data)
-      setPayStatusOptions(payStatusRes.data)
-      setPayTypeOptions(payTypeRes.data)
-    } catch {
-      message.error('获取字典数据失败，请稍后重试。')
+      const order = await getOrderDetail(orderId)
+      setDetail(order)
+      return order
+    } finally {
+      setDetailLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void fetchDicts()
-    void fetchList(1, defaultPageSize)
-  }, [fetchDicts, fetchList])
+    if (canQuery) void fetchList(1, pageSize)
+  }, [canQuery, fetchList, pageSize])
 
-  /** 字典渲染辅助 */
-  const getDictName = (options: DataDictionaryVo[], val: number) => {
-    const item = options.find((o) => Number(o.dictValue) === val)
-    return item?.dictName || String(val)
+  useEffect(() => {
+    const orderId = Number(searchParams.get('orderId'))
+    if (canQuery && Number.isInteger(orderId) && orderId > 0) {
+      void fetchDetail(orderId)
+    }
+  }, [canQuery, fetchDetail, searchParams])
+
+  useEffect(() => {
+    const handleOrderPaid = (orderId: number) => {
+      void fetchList(pageNum, pageSize)
+      if (detail?.orderId === orderId) void fetchDetail(orderId)
+    }
+    eventEmitter.on('order-paid', handleOrderPaid)
+    return () => eventEmitter.off('order-paid', handleOrderPaid)
+  }, [detail?.orderId, fetchDetail, fetchList, pageNum, pageSize])
+
+  const refreshOrder = async (orderId: number) => {
+    await Promise.all([
+      fetchList(pageNum, pageSize),
+      detail?.orderId === orderId ? fetchDetail(orderId) : Promise.resolve(),
+    ])
   }
 
-  /** 搜索 */
-  const handleSearch = () => {
-    setPageNum(1)
-    fetchList(1, pageSize)
+  const handlePay = async () => {
+    if (!payingOrder || paymentInFlight.current.has(payingOrder.orderId)) return
+    const orderId = payingOrder.orderId
+    const storageKey = `paymentRequestId:${orderId}:${paymentType}`
+    let requestId = sessionStorage.getItem(storageKey)
+    if (!requestId) {
+      requestId = crypto.randomUUID()
+      sessionStorage.setItem(storageKey, requestId)
+    }
+
+    paymentInFlight.current.add(orderId)
+    setPaying(true)
+    try {
+      const result = await payOrder({ requestId, orderId, payType: paymentType })
+      sessionStorage.removeItem(storageKey)
+      setLastPayment(result)
+      setPayingOrder(null)
+      message.success(
+        result.idempotent
+          ? `该订单已经支付，本次返回原支付结果：${result.transactionNo}`
+          : `支付成功，交易流水号：${result.transactionNo}`
+      )
+      await refreshOrder(orderId)
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      if (errorMessage.includes('状态') || errorMessage.includes('订单不存在')) {
+        await refreshOrder(orderId)
+      }
+      // 失败和网络超时均保留 sessionStorage 中的 requestId，供同一支付方式安全重试。
+    } finally {
+      paymentInFlight.current.delete(orderId)
+      setPaying(false)
+    }
   }
 
-  /** 新增 */
-  const handleAdd = () => {
-    setModalTitle('新增订单')
-    setEditRecord(null)
-    editForm.resetFields()
-    setModalVisible(true)
-  }
-
-  /** 编辑 */
-  const handleEdit = (record: OrderVo) => {
-    setModalTitle('编辑订单')
-    setEditRecord(record)
-    editForm.setFieldsValue({
-      ...record,
-      payTime: record.payTime ? dayjs(record.payTime) : undefined,
-    })
-    setModalVisible(true)
-  }
-
-  /** 删除 */
-  const handleDelete = async (record: OrderVo) => {
+  const handleTransition = (order: Order, action: OrderAction) => {
+    if (transitionInFlight.current.has(order.orderId)) return
+    const meta = ORDER_ACTION_META[action]
     Modal.confirm({
-      title: '确认删除该订单？',
+      title: meta.confirm,
+      okButtonProps: { danger: meta.danger },
       onOk: async () => {
-        await deleteOrder(record.orderId)
+        if (transitionInFlight.current.has(order.orderId)) return
+        transitionInFlight.current.add(order.orderId)
+        setTransitioningOrderId(order.orderId)
+        try {
+          await transitionOrder({ orderId: order.orderId, action })
+          message.success(`${meta.label}成功`)
+          await refreshOrder(order.orderId)
+        } catch (error) {
+          const errorMessage = getErrorMessage(error)
+          if (errorMessage.includes('状态') || errorMessage.includes('不能')) {
+            await refreshOrder(order.orderId)
+          }
+          throw error
+        } finally {
+          transitionInFlight.current.delete(order.orderId)
+          setTransitioningOrderId(null)
+        }
+      },
+    })
+  }
+
+  const handleDelete = (order: Order) => {
+    Modal.confirm({
+      title: `确认删除订单 ${order.orderNo}？`,
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await deleteOrder(order.orderId)
         message.success('删除成功')
+        if (detail?.orderId === order.orderId) setDetail(null)
         await fetchList(pageNum, pageSize)
       },
     })
   }
 
-  /** 提交表单 */
-  const handleSubmit = async () => {
-    const values = await editForm.validateFields()
-    const payload = {
-      ...values,
-      payTime: values.payTime ? values.payTime.format('YYYY-MM-DD HH:mm:ss') : undefined,
-    }
-    if (editRecord) {
-      await updateOrder({ ...payload, orderId: editRecord.orderId })
-    } else {
-      await insertOrder(payload)
-    }
-    message.success(editRecord ? '更新成功' : '新增成功')
-    setModalVisible(false)
-    await fetchList(pageNum, pageSize)
+  const renderActions = (order: Order) => {
+    const actions = ORDER_ACTIONS_BY_STATUS[order.orderStatus] || []
+    return (
+      <Space wrap>
+        <Button type="link" size="small" onClick={() => void fetchDetail(order.orderId)}>
+          详情
+        </Button>
+        {canEdit && order.orderStatus === OrderStatus.PENDING_PAYMENT && (
+          <Button
+            type="link"
+            size="small"
+            loading={paying && payingOrder?.orderId === order.orderId}
+            disabled={transitioningOrderId === order.orderId}
+            onClick={() => setPayingOrder(order)}
+          >
+            支付
+          </Button>
+        )}
+        {canEdit &&
+          actions.map((action) => {
+            const meta = ORDER_ACTION_META[action]
+            return (
+              <Button
+                key={action}
+                type="link"
+                size="small"
+                danger={meta.danger}
+                loading={transitioningOrderId === order.orderId}
+                disabled={paying && payingOrder?.orderId === order.orderId}
+                onClick={() => handleTransition(order, action)}
+              >
+                {meta.label}
+              </Button>
+            )
+          })}
+        {canRemove && (
+          <Button type="link" size="small" danger onClick={() => handleDelete(order)}>
+            删除
+          </Button>
+        )}
+      </Space>
+    )
   }
 
-  /** 分页 */
-  const handlePageChange = (page: number, size: number) => {
-    setPageNum(page)
-    setPageSize(size)
-    void fetchList(page, size)
-  }
-
-  /** 支付状态 Tag 颜色 */
-  const getPayStatusColor = (val: number) => {
-    if (val === -1) return 'error'
-    if (val === 0) return 'warning'
-    if (val === 1) return 'success'
-    return 'default'
-  }
-
-  /** 订单状态 Tag 颜色 */
-  const getOrderStatusColor = (val: number) => {
-    if (val < 0) return 'default'
-    if (val === 0) return 'warning'
-    if (val === 4) return 'success'
-    return 'processing'
-  }
-
-  /** 表格列定义 */
-  const columns: ColumnsType<OrderVo> = [
-    { title: '订单ID', dataIndex: 'orderId', align: 'center', width: 80 },
-    { title: '订单号', dataIndex: 'orderNo', align: 'center', width: 200 },
-    { title: '用户ID', dataIndex: 'userId', align: 'center', width: 80 },
-    { title: '总价', dataIndex: 'totalPrice', align: 'center', width: 100 },
+  const columns: ColumnsType<Order> = [
+    { title: '订单号', dataIndex: 'orderNo', width: 190 },
+    { title: '收货人', dataIndex: 'userName', width: 110 },
+    {
+      title: '总金额',
+      dataIndex: 'totalPrice',
+      width: 110,
+      render: (value: number) => formatAmount(value),
+    },
     {
       title: '支付状态',
       dataIndex: 'payStatus',
-      align: 'center',
-      width: 100,
-      render: (val: number) => (
-        <Tag color={getPayStatusColor(val)}>{getDictName(payStatusOptions, val)}</Tag>
-      ),
+      width: 110,
+      render: (value: Order['payStatus']) => <PayStatusTag status={value} />,
     },
     {
       title: '支付方式',
       dataIndex: 'payType',
-      align: 'center',
-      width: 100,
-      render: (val: number) => getDictName(payTypeOptions, val),
+      width: 110,
+      render: (value: PaymentType) => PAYMENT_TYPE_LABEL[value] || `未知（${value}）`,
     },
-    { title: '支付时间', dataIndex: 'payTime', align: 'center', width: 180 },
     {
       title: '订单状态',
       dataIndex: 'orderStatus',
-      align: 'center',
-      width: 100,
-      render: (val: number) => (
-        <Tag color={getOrderStatusColor(val)}>{getDictName(orderStatusOptions, val)}</Tag>
-      ),
+      width: 120,
+      render: (value: OrderStatus) => <OrderStatusTag status={value} />,
     },
-    { title: '收货人', dataIndex: 'userName', align: 'center', width: 100 },
-    { title: '手机号', dataIndex: 'userPhone', align: 'center', width: 120 },
-    { title: '收货地址', dataIndex: 'userAddress', align: 'center', width: 200, ellipsis: true },
-    { title: '创建时间', dataIndex: 'createTime', align: 'center', width: 180 },
+    { title: '创建时间', dataIndex: 'createTime', width: 180 },
     {
       title: '操作',
-      align: 'center',
-      width: 120,
       fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Button type="link" size="small" onClick={() => handleEdit(record)}>
-            编辑
-          </Button>
-          <Button type="link" size="small" danger onClick={() => handleDelete(record)}>
-            删除
-          </Button>
-        </Space>
-      ),
+      width: 330,
+      render: (_, order) => renderActions(order),
     },
   ]
 
+  if (!userLoaded) {
+    return <Spin tip="正在加载当前用户及权限" fullscreen />
+  }
+
+  if (!canQuery) {
+    return <Result status="403" title="无订单查询权限" subTitle="需要 order:query 权限。" />
+  }
+
   return (
-    <div className="order-page" style={{ padding: 16 }}>
-      {/* 搜索 */}
+    <div style={{ padding: 16 }}>
       <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
         <Form.Item name="orderNo" label="订单号">
-          <Input placeholder="订单号" allowClear style={{ width: 200 }} />
+          <Input allowClear style={{ width: 200 }} />
         </Form.Item>
         <Form.Item name="userId" label="用户ID">
-          <InputNumber placeholder="用户ID" style={{ width: 150 }} min={0} />
+          <InputNumber min={1} precision={0} style={{ width: 130 }} />
         </Form.Item>
         <Form.Item name="orderStatus" label="订单状态">
-          <Select placeholder="订单状态" allowClear style={{ width: 200 }}>
-            {orderStatusOptions.map((item) => (
-              <Select.Option key={item.id} value={Number(item.dictValue)}>
-                {item.dictName}
-              </Select.Option>
-            ))}
-          </Select>
+          <Select
+            allowClear
+            style={{ width: 150 }}
+            options={Object.entries(ORDER_STATUS_META).map(([value, meta]) => ({
+              value: Number(value),
+              label: meta.label,
+            }))}
+          />
+        </Form.Item>
+        <Form.Item name="payStatus" label="支付状态">
+          <Select
+            allowClear
+            style={{ width: 130 }}
+            options={Object.entries(PAY_STATUS_META).map(([value, meta]) => ({
+              value: Number(value),
+              label: meta.label,
+            }))}
+          />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" onClick={handleSearch}>
-            搜索
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => {
+                setPageNum(1)
+                void fetchList(1, pageSize)
+              }}
+            >
+              查询
+            </Button>
+            <Button
+              onClick={() => {
+                searchForm.resetFields()
+                setPageNum(1)
+                void fetchList(1, pageSize)
+              }}
+            >
+              重置
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
 
-      <Button type="primary" onClick={handleAdd} style={{ marginBottom: 16 }}>
-        新增订单
-      </Button>
+      {lastPayment && (
+        <Alert
+          closable
+          showIcon
+          type="success"
+          style={{ marginBottom: 16 }}
+          message={`订单 ${lastPayment.orderNo} 支付成功`}
+          description={`交易流水号：${lastPayment.transactionNo}${lastPayment.idempotent ? '（幂等重试返回原支付结果）' : ''}`}
+          onClose={() => setLastPayment(null)}
+        />
+      )}
 
-      {/* 表格 */}
       <Table
         rowKey="orderId"
         columns={columns}
         dataSource={tableData}
         loading={loading}
         pagination={false}
-        scroll={{ x: 1800 }}
+        scroll={{ x: 1250 }}
       />
       {total > 0 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
@@ -274,112 +390,81 @@ const OrderPage: React.FC = () => {
             pageSize={pageSize}
             total={total}
             showSizeChanger
-            showTotal={(t) => `共 ${t} 条`}
-            onChange={handlePageChange}
+            showTotal={(value) => `共 ${value} 条`}
+            onChange={(page, size) => {
+              setPageNum(page)
+              setPageSize(size)
+              void fetchList(page, size)
+            }}
           />
         </div>
       )}
 
-      {/* 新增/编辑弹窗 */}
-      <Modal
-        title={modalTitle}
-        open={modalVisible}
-        onOk={handleSubmit}
-        onCancel={() => setModalVisible(false)}
-        width={600}
+      <Drawer
+        title="订单详情"
+        width={640}
+        open={Boolean(detail)}
+        loading={detailLoading}
+        onClose={() => {
+          setDetail(null)
+          setSearchParams({})
+        }}
+        extra={detail ? renderActions(detail) : null}
       >
-        <Form form={editForm} labelCol={{ span: 6 }} wrapperCol={{ span: 16 }}>
-          <Form.Item
-            name="userId"
-            label="用户ID"
-            rules={[{ required: true, message: '请输入用户ID' }]}
-          >
-            <InputNumber placeholder="请输入用户ID" min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item
-            name="totalPrice"
-            label="总价"
-            rules={[{ required: true, message: '请输入总价' }]}
-          >
-            <InputNumber
-              placeholder="请输入订单总价"
-              min={0}
-              precision={2}
-              style={{ width: '100%' }}
+        {detail && (
+          <>
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="订单号">{detail.orderNo}</Descriptions.Item>
+              <Descriptions.Item label="用户ID">{detail.userId}</Descriptions.Item>
+              <Descriptions.Item label="总金额">
+                {formatAmount(detail.totalPrice)}
+              </Descriptions.Item>
+              <Descriptions.Item label="支付状态">
+                <PayStatusTag status={detail.payStatus} />
+              </Descriptions.Item>
+              <Descriptions.Item label="支付方式">
+                {PAYMENT_TYPE_LABEL[detail.payType]}
+              </Descriptions.Item>
+              <Descriptions.Item label="支付时间">{detail.payTime || '-'}</Descriptions.Item>
+              <Descriptions.Item label="订单状态">
+                <OrderStatusTag status={detail.orderStatus} />
+              </Descriptions.Item>
+              <Descriptions.Item label="收货人">{detail.userName}</Descriptions.Item>
+              <Descriptions.Item label="手机号">{detail.userPhone}</Descriptions.Item>
+              <Descriptions.Item label="收货地址">{detail.userAddress}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">{detail.createTime}</Descriptions.Item>
+              <Descriptions.Item label="更新时间">{detail.updateTime}</Descriptions.Item>
+            </Descriptions>
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginTop: 16 }}
+              message="后端当前未提供订单商品明细查询接口，页面不展示或伪造商品明细。"
             />
-          </Form.Item>
-          <Form.Item
-            name="payStatus"
-            label="支付状态"
-            rules={[{ required: true, message: '请选择支付状态' }]}
-          >
-            <Select placeholder="请选择支付状态">
-              {payStatusOptions.map((item) => (
-                <Select.Option key={item.id} value={Number(item.dictValue)}>
-                  {item.dictName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="payType"
-            label="支付方式"
-            rules={[{ required: true, message: '请选择支付方式' }]}
-          >
-            <Select placeholder="请选择支付方式">
-              {payTypeOptions.map((item) => (
-                <Select.Option key={item.id} value={Number(item.dictValue)}>
-                  {item.dictName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="payTime" label="支付时间">
-            <DatePicker
-              showTime
-              placeholder="请选择支付时间"
-              format="YYYY-MM-DD HH:mm:ss"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="orderStatus"
-            label="订单状态"
-            rules={[{ required: true, message: '请选择订单状态' }]}
-          >
-            <Select placeholder="请选择订单状态">
-              {orderStatusOptions.map((item) => (
-                <Select.Option key={item.id} value={Number(item.dictValue)}>
-                  {item.dictName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="userName"
-            label="收货人姓名"
-            rules={[{ required: true, message: '请输入收货人姓名' }]}
-          >
-            <Input placeholder="请输入收货人姓名" />
-          </Form.Item>
-          <Form.Item
-            name="userPhone"
-            label="收货人手机号"
-            rules={[{ required: true, message: '请输入手机号' }]}
-          >
-            <Input placeholder="请输入收货人手机号" />
-          </Form.Item>
-          <Form.Item
-            name="userAddress"
-            label="收货人地址"
-            rules={[{ required: true, message: '请输入地址' }]}
-          >
-            <Input placeholder="请输入收货人地址" />
-          </Form.Item>
-          <Form.Item name="extraInfo" label="订单备注">
-            <Input placeholder="请输入订单备注" />
-          </Form.Item>
-        </Form>
+          </>
+        )}
+      </Drawer>
+
+      <Modal
+        title={`支付订单 ${payingOrder?.orderNo || ''}`}
+        open={Boolean(payingOrder)}
+        confirmLoading={paying}
+        okText="确认支付"
+        okButtonProps={{ disabled: paying }}
+        cancelButtonProps={{ disabled: paying }}
+        onOk={() => handlePay()}
+        onCancel={() => !paying && setPayingOrder(null)}
+      >
+        <Typography.Paragraph>
+          请选择支付方式。支付失败或网络超时后可重试，重试会复用同一幂等键。
+        </Typography.Paragraph>
+        <Radio.Group
+          value={paymentType}
+          onChange={(event) => setPaymentType(event.target.value as PayablePaymentType)}
+        >
+          <Radio value={PaymentType.ALIPAY}>支付宝</Radio>
+          <Radio value={PaymentType.WECHAT_PAY}>微信支付</Radio>
+        </Radio.Group>
       </Modal>
     </div>
   )

@@ -24,6 +24,11 @@ export interface CaptchaResponseVo {
 export interface LoginResponseVo {
   token: string
   refreshToken: string
+  id?: number
+  nickName?: string
+  loginName?: string
+  address?: string
+  permissions?: string[]
 }
 
 /**

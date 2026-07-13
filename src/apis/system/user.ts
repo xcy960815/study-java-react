@@ -10,7 +10,13 @@ export interface UserInfoVo {
   roleIds?: number[]
   roleNames?: string[]
   roleCodes?: string[]
+  permissions?: string[]
   createTime?: string
+}
+
+/** 获取当前登录用户及其权限。 */
+export const getCurrentUser = (): Promise<UserInfoVo> => {
+  return request.get('/user/getUserInfo')
 }
 
 export interface UserListParams {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Layout, Menu, Button } from 'antd'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Layout, Menu, Button, message } from 'antd'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   DesktopOutlined,
@@ -22,6 +22,8 @@ import { layoutRoutes } from '@/router'
 import type { RouteHandle } from '@/router'
 import type { RouteObject } from 'react-router-dom'
 import type { ItemType } from 'antd/es/menu/interface'
+import { useOrderNotifications } from '@/hooks/useOrderNotifications'
+import { hasPermission } from '@/utils/permission'
 
 const { Header, Sider, Content } = Layout
 
@@ -44,11 +46,19 @@ const iconMap: Record<string, React.ReactNode> = {
  * 根据路由配置自动生成菜单项
  * 仅渲染 handle 中包含 title 且 hidden 不为 true 的路由
  */
-const generateMenuItems = (routes: RouteObject[], parentPath = ''): ItemType[] => {
+const generateMenuItems = (
+  routes: RouteObject[],
+  permissions: string[],
+  parentPath = ''
+): ItemType[] => {
   return routes
     .filter((route) => {
       const handle = route.handle as RouteHandle | undefined
-      return handle?.title && !handle?.hidden
+      return (
+        handle?.title &&
+        !handle?.hidden &&
+        (!handle.requiredPermission || hasPermission(permissions, handle.requiredPermission))
+      )
     })
     .map((route) => {
       const handle = route.handle as RouteHandle | undefined
@@ -64,7 +74,7 @@ const generateMenuItems = (routes: RouteObject[], parentPath = ''): ItemType[] =
           key: fullPath,
           icon: iconMap[handle?.icon || ''] || null,
           label: handle!.title,
-          children: generateMenuItems(visibleChildren, fullPath),
+          children: generateMenuItems(visibleChildren, permissions, fullPath),
         }
       }
 
@@ -80,7 +90,13 @@ const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { logout } = useLoginStore()
+  const { logout, user, loadCurrentUser } = useLoginStore()
+
+  useEffect(() => {
+    void loadCurrentUser().catch(() => message.error('获取当前用户信息失败'))
+  }, [loadCurrentUser])
+
+  useOrderNotifications(user?.id)
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key)
@@ -92,7 +108,10 @@ const MainLayout: React.FC = () => {
   }
 
   /** 从路由配置动态生成的菜单项 */
-  const menuItems = generateMenuItems(layoutRoutes)
+  const menuItems = useMemo(
+    () => generateMenuItems(layoutRoutes, user?.permissions || []),
+    [user?.permissions]
+  )
 
   return (
     <Layout className="h-screen w-screen overflow-hidden">
@@ -124,7 +143,7 @@ const MainLayout: React.FC = () => {
             退出登录
           </Button>
         </Header>
-        <Content className="m-6 p-6 bg-white min-h-[280px] overflow-auto rounded shadow-sm">
+        <Content className="m-6 min-h-70 overflow-auto rounded bg-white p-6 shadow-sm">
           <Outlet />
         </Content>
       </Layout>

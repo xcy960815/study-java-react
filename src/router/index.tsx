@@ -30,6 +30,8 @@ export interface RouteHandle {
   title?: string
   /** 设为 true 则不在菜单中显示 */
   hidden?: boolean
+  /** 侧边栏展示该路由所需权限 */
+  requiredPermission?: string
 }
 
 /**
@@ -100,7 +102,7 @@ export const layoutRoutes: RouteObject[] = [
   {
     path: 'order',
     element: <OrderPage />,
-    handle: { icon: 'ShoppingCart', title: '订单管理' },
+    handle: { icon: 'ShoppingCart', title: '订单管理', requiredPermission: 'order:query' },
   },
   {
     path: 'goods',

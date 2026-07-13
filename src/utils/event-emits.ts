@@ -5,6 +5,7 @@ interface AppEventMap {
   login: []
   logout: []
   'token-invalid': []
+  'order-paid': [orderId: number]
 }
 
 /**
