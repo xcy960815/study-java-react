@@ -28,6 +28,11 @@ export default defineConfig(({ mode }) => {
   return {
     base: VITE_BASE_URL,
     envDir: 'env',
+    // sockjs-client 仍使用 Node/Browserify 风格的 global.crypto。
+    // Vite 的浏览器 ESM 构建不会默认提供 global，需要映射到标准 globalThis。
+    define: {
+      global: 'globalThis',
+    },
     build: {
       chunkSizeWarningLimit: 1024, // 将警告体积变成1MB
       rollupOptions: {
