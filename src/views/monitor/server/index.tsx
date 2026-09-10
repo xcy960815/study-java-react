@@ -7,6 +7,7 @@ import {
   stopServerMonitor,
   type ServerInfoVo,
 } from '@/apis/monitor/serverMonitor'
+import { getSharedWebSocketClient } from '@/utils/websocket'
 
 /** 仪表盘进度条组件 */
 const GaugeCard: React.FC<{ title: string; value: number; unit?: string }> = ({
@@ -84,8 +85,8 @@ const ServerPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   /** 是否正在监控 */
   const [isMonitoring, setIsMonitoring] = useState(false)
-  /** 轮询定时器 */
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  /** 监控订阅的取消函数，与订单通知共用同一条 STOMP 连接 */
+  const unsubscribeRef = useRef<(() => void) | null>(null)
 
   /** 获取服务器信息 */
   const fetchInfo = useCallback(async () => {
@@ -97,15 +98,39 @@ const ServerPage: React.FC = () => {
     }
   }, [])
 
-  /** 开始监控（轮询方式） */
+  /** 停止监控：先退订再通知后端停止推送 */
+  const stopMonitor = useCallback(async () => {
+    unsubscribeRef.current?.()
+    unsubscribeRef.current = null
+    setIsMonitoring(false)
+    try {
+      await stopServerMonitor()
+      message.success('停止监控')
+    } catch {
+      message.error('停止监控失败')
+    }
+  }, [])
+
+  /** 开始监控：订阅 /topic/server-monitor 实时推送（每 3 秒一次） */
   const handleStart = async () => {
     setLoading(true)
     try {
       await startServerMonitor()
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = getSharedWebSocketClient().subscribe<ServerInfoVo>(
+        '/topic/server-monitor',
+        (data) => {
+          setServerInfo(data)
+          setIsMonitoring(true)
+        },
+        (error) => {
+          console.error('WebSocket 错误:', error)
+          message.error('连接失败')
+          setIsMonitoring(false)
+        }
+      )
       setIsMonitoring(true)
       message.success('开始监控')
-      // 每 5 秒刷新一次
-      timerRef.current = setInterval(fetchInfo, 5000)
     } catch {
       message.error('开始监控失败')
     } finally {
@@ -113,25 +138,11 @@ const ServerPage: React.FC = () => {
     }
   }
 
-  /** 停止监控 */
-  const handleStop = async () => {
-    try {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      await stopServerMonitor()
-      setIsMonitoring(false)
-      message.success('停止监控')
-    } catch {
-      message.error('停止监控失败')
-    }
-  }
-
   useEffect(() => {
     fetchInfo()
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
     }
   }, [fetchInfo])
 
@@ -161,7 +172,7 @@ const ServerPage: React.FC = () => {
               开始监控
             </Button>
           ) : (
-            <Button danger icon={<PauseCircleOutlined />} onClick={handleStop}>
+            <Button danger icon={<PauseCircleOutlined />} onClick={stopMonitor}>
               停止监控
             </Button>
           )}

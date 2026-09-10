@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import axios from 'axios'
 import {
   Alert,
   Button,
+  Checkbox,
   Descriptions,
   Drawer,
   Form,
@@ -27,11 +27,15 @@ import {
   getOrderDetail,
   getOrderList,
   payOrder,
+  placeOrder,
   transitionOrder,
+  type CheckoutDraftItem,
   type Order,
   type OrderQuery,
   type PaymentResult,
+  type PlaceOrderRequest,
 } from '@/apis/order'
+import { getGoodsList } from '@/apis/goods'
 import {
   ORDER_ACTION_META,
   ORDER_ACTIONS_BY_STATUS,
@@ -46,15 +50,24 @@ import {
 import { useLoginStore } from '@/store'
 import { eventEmitter } from '@/utils/event-emits'
 import { hasPermission } from '@/utils/permission'
+import {
+  clearPaymentRequestId,
+  consumeCheckoutDraft,
+  getOrCreatePaymentRequestId,
+  isOrderStateConflict,
+  validatePlaceOrderRequest,
+} from '@/utils/order-workflow'
 
 type OrderSearchValues = Pick<OrderQuery, 'orderNo' | 'userId' | 'orderStatus' | 'payStatus'>
 
-const formatAmount = (amount: number) => `¥${amount.toFixed(2)}`
-
-const getErrorMessage = (error: unknown) => {
-  if (!axios.isAxiosError(error)) return ''
-  return (error.response?.data as { message?: string } | undefined)?.message || error.message
+/** 提交订单弹窗内的商品行：草稿行加上勾选态 */
+interface CheckoutGoods extends CheckoutDraftItem {
+  selected: boolean
 }
+
+type PlaceOrderFormValues = Pick<PlaceOrderRequest, 'userName' | 'userPhone' | 'userAddress'>
+
+const formatAmount = (amount: number) => `¥${amount.toFixed(2)}`
 
 const OrderStatusTag = ({ status }: { status: OrderStatus }) => {
   const meta = ORDER_STATUS_META[status]
@@ -73,6 +86,9 @@ const OrderPage: React.FC = () => {
   const userLoaded = useLoginStore((state) => state.userLoaded)
   const canEdit = useLoginStore((state) => hasPermission(state.user?.permissions, 'order:edit'))
   const canRemove = useLoginStore((state) => hasPermission(state.user?.permissions, 'order:remove'))
+  const canPlaceOrder = useLoginStore((state) =>
+    hasPermission(state.user?.permissions, 'order:add')
+  )
   const [tableData, setTableData] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [pageNum, setPageNum] = useState(1)
@@ -87,6 +103,13 @@ const OrderPage: React.FC = () => {
   const [lastPayment, setLastPayment] = useState<PaymentResult | null>(null)
   const paymentInFlight = useRef(new Set<number>())
   const transitionInFlight = useRef(new Set<number>())
+  const [placeForm] = Form.useForm<PlaceOrderFormValues>()
+  const [placeVisible, setPlaceVisible] = useState(false)
+  const [placingOrder, setPlacingOrder] = useState(false)
+  const [checkoutGoods, setCheckoutGoods] = useState<CheckoutGoods[]>([])
+  /** 已消费过 checkout=1 草稿，防止 setSearchParams 触发 effect 重跑 */
+  const checkoutConsumedRef = useRef(false)
+  const user = useLoginStore((state) => state.user)
 
   const fetchList = useCallback(
     async (pn: number, ps: number) => {
@@ -130,6 +153,16 @@ const OrderPage: React.FC = () => {
     }
   }, [canQuery, fetchDetail, searchParams])
 
+  /** 商品页跳转携带 checkout=1 时消费结算草稿并打开提交订单弹窗 */
+  useEffect(() => {
+    if (!canQuery || searchParams.get('checkout') !== '1' || checkoutConsumedRef.current) return
+    checkoutConsumedRef.current = true
+    setSearchParams({}, { replace: true })
+    const draft = consumeCheckoutDraft()
+    if (draft.length > 0) void openPlaceOrderDialog(draft)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canQuery, searchParams])
+
   useEffect(() => {
     const handleOrderPaid = (orderId: number) => {
       void fetchList(pageNum, pageSize)
@@ -146,21 +179,98 @@ const OrderPage: React.FC = () => {
     ])
   }
 
+  /** 弹窗打开时加载当前上架商品供选择（无草稿场景） */
+  const loadAvailableGoods = useCallback(async () => {
+    const res = await getGoodsList({
+      pageNum: 1,
+      pageSize: 100,
+      goodsSellStatus: 1,
+    })
+    setCheckoutGoods(
+      res.data.map((goods) => ({
+        goodsId: goods.goodsId,
+        goodsName: goods.goodsName,
+        sellingPrice: goods.sellingPrice,
+        stockNum: goods.stockNum,
+        quantity: 1,
+        selected: false,
+      }))
+    )
+  }, [])
+
+  /** 重置收货信息表单，从当前登录用户预填 */
+  const resetPlaceOrderForm = useCallback(() => {
+    const currentUser = useLoginStore.getState().user
+    placeForm.resetFields()
+    placeForm.setFieldsValue({
+      userName: currentUser?.nickName || '',
+      userPhone: /^\d{11}$/.test(currentUser?.loginName || '') ? currentUser!.loginName : '',
+      userAddress: currentUser?.address || '',
+    })
+  }, [placeForm])
+
+  const openPlaceOrderDialog = useCallback(
+    async (draftItems: CheckoutDraftItem[] = []) => {
+      resetPlaceOrderForm()
+      setPlaceVisible(true)
+      if (draftItems.length > 0) {
+        setCheckoutGoods(draftItems.map((item) => ({ ...item, selected: true })))
+      } else {
+        await loadAvailableGoods()
+      }
+    },
+    [loadAvailableGoods, resetPlaceOrderForm]
+  )
+
+  const selectedCheckoutItems = checkoutGoods.filter((item) => item.selected)
+  const displayTotal = selectedCheckoutItems.reduce(
+    (sum, item) => sum + item.sellingPrice * item.quantity,
+    0
+  )
+
+  const handlePlaceOrder = async () => {
+    if (placingOrder) return
+    const values = await placeForm.validateFields()
+    const request: PlaceOrderRequest = {
+      userId: user?.id ?? 0,
+      userName: values.userName.trim(),
+      userPhone: values.userPhone,
+      userAddress: values.userAddress.trim(),
+      items: selectedCheckoutItems.map((item) => ({
+        goodsId: item.goodsId,
+        quantity: item.quantity,
+      })),
+    }
+    const clientMessage = validatePlaceOrderRequest(request)
+    if (clientMessage) {
+      message.warning(clientMessage)
+      return
+    }
+
+    setPlacingOrder(true)
+    try {
+      const order = await placeOrder(request)
+      setPlaceVisible(false)
+      message.success(`订单 ${order.orderNo} 创建成功，后端确认金额 ¥${order.totalPrice}`)
+      await fetchList(1, pageSize)
+      setPageNum(1)
+      await fetchDetail(order.orderId)
+    } finally {
+      setPlacingOrder(false)
+    }
+  }
+
   const handlePay = async () => {
     if (!payingOrder || paymentInFlight.current.has(payingOrder.orderId)) return
     const orderId = payingOrder.orderId
-    const storageKey = `paymentRequestId:${orderId}:${paymentType}`
-    let requestId = sessionStorage.getItem(storageKey)
-    if (!requestId) {
-      requestId = crypto.randomUUID()
-      sessionStorage.setItem(storageKey, requestId)
-    }
+    // 同一订单+支付方式复用幂等键，失败/超时保留供安全重试，成功才清除。
+    const requestId = getOrCreatePaymentRequestId(orderId, paymentType)
 
     paymentInFlight.current.add(orderId)
     setPaying(true)
     try {
       const result = await payOrder({ requestId, orderId, payType: paymentType })
-      sessionStorage.removeItem(storageKey)
+      clearPaymentRequestId(orderId, paymentType)
       setLastPayment(result)
       setPayingOrder(null)
       message.success(
@@ -170,11 +280,9 @@ const OrderPage: React.FC = () => {
       )
       await refreshOrder(orderId)
     } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      if (errorMessage.includes('状态') || errorMessage.includes('订单不存在')) {
+      if (isOrderStateConflict(error)) {
         await refreshOrder(orderId)
       }
-      // 失败和网络超时均保留 sessionStorage 中的 requestId，供同一支付方式安全重试。
     } finally {
       paymentInFlight.current.delete(orderId)
       setPaying(false)
@@ -196,8 +304,7 @@ const OrderPage: React.FC = () => {
           message.success(`${meta.label}成功`)
           await refreshOrder(order.orderId)
         } catch (error) {
-          const errorMessage = getErrorMessage(error)
-          if (errorMessage.includes('状态') || errorMessage.includes('不能')) {
+          if (isOrderStateConflict(error)) {
             await refreshOrder(order.orderId)
           }
           throw error
@@ -359,6 +466,11 @@ const OrderPage: React.FC = () => {
             >
               重置
             </Button>
+            {canPlaceOrder && (
+              <Button type="primary" onClick={() => void openPlaceOrderDialog()}>
+                提交订单
+              </Button>
+            )}
           </Space>
         </Form.Item>
       </Form>
@@ -444,6 +556,105 @@ const OrderPage: React.FC = () => {
           </>
         )}
       </Drawer>
+
+      <Modal
+        title="提交订单"
+        width={760}
+        open={placeVisible}
+        confirmLoading={placingOrder}
+        okText="确认提交"
+        okButtonProps={{ disabled: placingOrder }}
+        cancelButtonProps={{ disabled: placingOrder }}
+        onOk={() => void handlePlaceOrder()}
+        onCancel={() => !placingOrder && setPlaceVisible(false)}
+      >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="商品价格仅供确认，订单总金额以后端创建订单响应为准。"
+        />
+        <Form form={placeForm} layout="vertical">
+          <Form.Item label="当前用户">
+            <Input disabled value={user ? `${user.nickName}（ID: ${user.id ?? '-'}）` : ''} />
+          </Form.Item>
+          <Form.Item
+            name="userName"
+            label="收货人"
+            rules={[
+              { required: true, whitespace: true, message: '收货人不能为空' },
+              { max: 30, message: '收货人不能超过30个字符' },
+            ]}
+          >
+            <Input maxLength={30} showCount />
+          </Form.Item>
+          <Form.Item
+            name="userPhone"
+            label="手机号"
+            rules={[{ pattern: /^\d{11}$/, message: '手机号必须是11位数字' }]}
+          >
+            <Input maxLength={11} />
+          </Form.Item>
+          <Form.Item
+            name="userAddress"
+            label="收货地址"
+            rules={[
+              { required: true, whitespace: true, message: '收货地址不能为空' },
+              { max: 100, message: '收货地址不能超过100个字符' },
+            ]}
+          >
+            <Input.TextArea maxLength={100} showCount rows={2} />
+          </Form.Item>
+        </Form>
+        {checkoutGoods.length === 0 && (
+          <Typography.Paragraph type="secondary">暂无可选商品。</Typography.Paragraph>
+        )}
+        {checkoutGoods.map((item, index) => (
+          <div
+            key={item.goodsId}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '8px 0',
+              borderBottom: '1px solid #f0f0f0',
+            }}
+          >
+            <Checkbox
+              checked={item.selected}
+              disabled={item.stockNum <= 0}
+              onChange={(event) => {
+                setCheckoutGoods((prev) =>
+                  prev.map((goods, goodsIndex) =>
+                    goodsIndex === index ? { ...goods, selected: event.target.checked } : goods
+                  )
+                )
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>{item.goodsName}</span>
+            </Checkbox>
+            <span style={{ color: '#cf1322', width: 90 }}>{formatAmount(item.sellingPrice)}</span>
+            <span style={{ color: '#888', width: 90 }}>库存 {item.stockNum}</span>
+            <InputNumber
+              min={1}
+              max={Math.min(999, item.stockNum)}
+              value={item.quantity}
+              disabled={!item.selected || item.stockNum <= 0}
+              onChange={(value) => {
+                const quantity = value ?? 1
+                setCheckoutGoods((prev) =>
+                  prev.map((goods, goodsIndex) =>
+                    goodsIndex === index ? { ...goods, quantity } : goods
+                  )
+                )
+              }}
+            />
+          </div>
+        ))}
+        <div style={{ marginTop: 16, fontWeight: 600 }}>
+          展示合计：<span style={{ color: '#cf1322' }}>{formatAmount(displayTotal)}</span>
+        </div>
+      </Modal>
 
       <Modal
         title={`支付订单 ${payingOrder?.orderNo || ''}`}

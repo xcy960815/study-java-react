@@ -37,6 +37,13 @@ export interface PlaceOrderItem {
   quantity: number
 }
 
+/** 结算草稿行：商品页勾选后暂存 sessionStorage，订单页消费后还原选择 */
+export interface CheckoutDraftItem extends PlaceOrderItem {
+  goodsName: string
+  sellingPrice: number
+  stockNum: number
+}
+
 export interface PlaceOrderRequest {
   userId: number
   userName: string

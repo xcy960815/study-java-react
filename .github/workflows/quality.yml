@@ -33,5 +33,8 @@ jobs:
       - name: Lint
         run: pnpm lint:ci
 
+      - name: Unit tests
+        run: pnpm test
+
       - name: Build production bundle
         run: pnpm build:prod
