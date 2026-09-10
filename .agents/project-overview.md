@@ -11,6 +11,16 @@
 
 The repository is frontend-only. It expects backend APIs to be reachable through Vite/Nginx proxy paths configured by environment variables.
 
+## Repository Family
+
+`study-java-react` is one of three sibling repositories under `/Users/opera/Documents/my-repositories/`:
+
+- `study-java` — the Java backend (Maven project with `pom.xml`, `docker-compose.yml`, `scripts/`) serving both frontends.
+- `study-java-vue` — the Vue 3 + Element Plus + Pinia frontend for the same backend; the original version this React repo mirrors.
+- `study-java-react` — this repo.
+
+Recent feature syncs have closed most of the gap: order workflow, dashboard workbench, user profile center, and notification center now exist in this repo. The Vue version still uniquely has real Ollama/DeepSeek model pages, file upload, and error pages. When a task depends on backend contracts or the intended shape of a not-yet-ported feature, consult the sibling repos rather than guessing.
+
 ## Main Technology
 
 - React 19 with `react-router-dom` 7.
@@ -76,5 +86,5 @@ Production:
 ## Current Limitations
 
 - No backend service is included.
-- No test runner, test script, or test files are currently present.
+- Unit tests (Vitest + jsdom) cover the pure utility modules (`order-workflow`, `dashboard-stats`, `notification`); pages/hooks are validated by lint + build only.
 - No dedicated docs generation script exists.

@@ -23,3 +23,6 @@ public/file-structure.json
 *.njsproj
 *.sln
 *.sw?
+
+# Vitest
+coverage/

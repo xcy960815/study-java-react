@@ -2,14 +2,13 @@
 
 ## Current State
 
-This repository currently has no formal test setup.
+Vitest 5 + jsdom unit testing is configured (added alongside the order-workflow port).
 
-Observed facts:
-
-- No `test`, `test:unit`, or `test:e2e` script exists in `package.json`.
-- No Vitest, Jest, React Testing Library, or Playwright config exists.
-- No `*.test.*`, `*.spec.*`, or `__tests__` files were found.
-- CI currently runs ESLint and a production build, not tests.
+- Runner: `pnpm test` (`vitest run`); watch mode via `pnpm vitest` if needed.
+- Config: `vitest.config.ts` (standalone, does NOT merge `vite.config.ts` to avoid build plugins); it re-declares the `@` → `./src` alias and runs in the `jsdom` environment.
+- Test files live beside the source as `*.test.ts` / `*.test.tsx` and must import `describe`/`it`/`expect`/`vi` explicitly from `vitest`.
+- Existing coverage: `src/utils/order-workflow.test.ts` (place-order validation, payment idempotency keys, legal actions per status, checkout draft) `src/utils/dashboard-stats.test.ts` (greeting buckets, order-status pie data, stock TOP N), and `src/utils/notification.test.ts` (relative time formatting, order-paid notification content, notification route mapping).
+- CI (`.github/workflows/quality.yml`) runs lint, `pnpm test`, and the production build.
 
 ## Existing Validation Commands
 
@@ -18,16 +17,17 @@ Use these checks before handing off changes:
 ```bash
 pnpm typecheck
 pnpm lint
+pnpm test
 pnpm build:prod
 ```
 
 For CI-equivalent validation:
 
 ```bash
-pnpm check
+pnpm lint:ci && pnpm test && pnpm build:prod
 ```
 
-`pnpm check` runs strict lint and a production build.
+`pnpm check` runs strict lint and a production build (tests excluded; run `pnpm test` separately when utilities are touched).
 
 ## Manual Regression Areas
 
@@ -42,18 +42,14 @@ When no formal tests exist, manually verify the affected flow in a local dev ser
 
 ## Adding Regression Tests
 
-If a change needs durable regression coverage, add the test framework in the same change before writing tests.
+Tests use the configured Vitest runner; add tests in the same change as the behavior they cover.
 
-Recommended first step for this React/Vite project:
+Conventions:
 
-- Unit/component tests: Vitest + React Testing Library + jsdom.
-- E2E tests: Playwright, only for browser-critical flows such as auth redirects or CRUD flows.
-
-Recommended locations:
-
-- Component/page tests beside the source file as `*.test.tsx`.
-- Utility tests beside the source file as `*.test.ts`.
-- Larger integration suites under `src/__tests__/` only when they span multiple modules.
+- Utility tests beside the source file as `*.test.ts`; component tests as `*.test.tsx` (React Testing Library is not installed yet — add it with pnpm before writing component tests).
+- Import test APIs explicitly: `import { beforeEach, describe, expect, it, vi } from 'vitest'` (there is no ambient test types setup; `tsc -b` typechecks test files against these imports).
+- jsdom provides `sessionStorage`/`localStorage` — clear them in `beforeEach`; stub `crypto.randomUUID` with `vi.stubGlobal` for deterministic ids.
+- Keep tests off the network: exercise pure helpers (e.g. `@/utils/order-workflow`) rather than Axios wrappers.
 
 Good first regression targets:
 
@@ -65,8 +61,7 @@ Good first regression targets:
 ## AI Testing Workflow
 
 1. Read the affected source and nearby patterns first.
-2. Identify whether existing validation is enough; do not claim automated test coverage when no test runner exists.
-3. For low-risk UI copy/style edits, run at least `pnpm typecheck` or `pnpm lint` if practical.
-4. For route, API, auth, or build-plugin changes, run `pnpm check`.
-5. If adding a test framework, update `package.json`, lockfile, config, and CI/package scripts together.
-6. Keep regression tests focused on the behavior that broke or could break.
+2. For low-risk UI copy/style edits, run at least `pnpm typecheck` or `pnpm lint` if practical.
+3. For route, API, auth, or build-plugin changes, run `pnpm lint:ci`, `pnpm test`, and `pnpm build:prod`.
+4. When changing tested utilities (currently `src/utils/order-workflow.ts`), extend or update the adjacent `*.test.ts` in the same change.
+5. Keep regression tests focused on the behavior that broke or could break.
