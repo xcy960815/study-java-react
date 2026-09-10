@@ -26,7 +26,7 @@ const Login: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('')
 
   const { login } = useLoginStore()
-  const redirectTo = (location.state as { from?: string } | null)?.from || '/system'
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard'
 
   const usernameValue = Form.useWatch('username', form)
   const passwordValue = Form.useWatch('password', form)

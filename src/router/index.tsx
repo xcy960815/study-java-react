@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import MainLayout from '@/layout/index'
 import { changeTabIcon, changeTabTitle } from '@/utils/system-style'
@@ -8,17 +9,22 @@ import {
   RequireAuth,
   RouteEventBridge,
 } from './route-helpers'
-import GoodsPage from '@/views/goods/index'
-import Login from '@/views/login'
-import OperlogPage from '@/views/monitor/operlog/index'
-import ReportPage from '@/views/monitor/report/index'
-import ServerPage from '@/views/monitor/server/index'
-import OrderPage from '@/views/order/index'
-import Register from '@/views/register'
-import DataDictionaryList from '@/views/system/data-dictionary/index'
-import MenuList from '@/views/system/menu/index'
-import RoleList from '@/views/system/role/index'
-import UserList from '@/views/system/user/index'
+
+// 路由级代码分割：页面仅在首次访问对应路由时才加载。
+const DashboardPage = lazy(() => import('@/views/dashboard'))
+const GoodsPage = lazy(() => import('@/views/goods'))
+const Login = lazy(() => import('@/views/login'))
+const OperlogPage = lazy(() => import('@/views/monitor/operlog'))
+const ReportPage = lazy(() => import('@/views/monitor/report'))
+const ServerPage = lazy(() => import('@/views/monitor/server'))
+const OrderPage = lazy(() => import('@/views/order'))
+const PasswordPage = lazy(() => import('@/views/password'))
+const Register = lazy(() => import('@/views/register'))
+const UserInfoPage = lazy(() => import('@/views/user/info'))
+const DataDictionaryList = lazy(() => import('@/views/system/data-dictionary'))
+const MenuList = lazy(() => import('@/views/system/menu'))
+const RoleList = lazy(() => import('@/views/system/role'))
+const UserList = lazy(() => import('@/views/system/user'))
 
 const appTitle = import.meta.env.VITE_APP_TITLE || 'Study Java React'
 
@@ -42,6 +48,11 @@ export interface RouteHandle {
  *   - hidden: 设为 true 则不在菜单中显示
  */
 export const layoutRoutes: RouteObject[] = [
+  {
+    path: 'dashboard',
+    element: <DashboardPage />,
+    handle: { icon: 'Home', title: '首页工作台' },
+  },
   {
     path: 'system',
     handle: { icon: 'Setting', title: '系统管理' },
@@ -108,6 +119,16 @@ export const layoutRoutes: RouteObject[] = [
     path: 'goods',
     element: <GoodsPage />,
     handle: { icon: 'Shop', title: '商品管理' },
+  },
+  {
+    path: 'user/info',
+    element: <UserInfoPage />,
+    handle: { icon: 'User', title: '个人中心', hidden: true },
+  },
+  {
+    path: 'password',
+    element: <PasswordPage />,
+    handle: { icon: 'Lock', title: '修改密码', hidden: true },
   },
   {
     path: 'ollama',

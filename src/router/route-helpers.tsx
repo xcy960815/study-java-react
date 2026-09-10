@@ -5,7 +5,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { eventEmitter } from '@/utils/event-emits'
 import { getToken } from '@/utils/token'
 
-const defaultAuthedPath = '/system'
+const defaultAuthedPath = '/dashboard'
 
 interface RouteState {
   from?: string
