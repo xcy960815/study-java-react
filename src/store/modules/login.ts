@@ -7,6 +7,9 @@ import type { LoginRequestDto } from '@/apis/login'
 import { getCurrentUser, type UserInfoVo } from '@/apis/system/user'
 import { hasPermission } from '@/utils/permission'
 
+/** 进行中的用户信息请求，用于并发调用去重 */
+let currentUserPromise: Promise<UserInfoVo> | null = null
+
 /**
  * 登录模块对外暴露的动作集合。
  */
@@ -64,14 +67,21 @@ export const useLoginStore = create<LoginActions>((set, get) => ({
       set({ userLoaded: true })
       return existing
     }
-    set({ userLoading: true })
-    try {
-      const user = await getCurrentUser()
-      set({ user, userLoaded: true })
-      return user
-    } finally {
-      set({ userLoading: false, userLoaded: true })
+    if (currentUserPromise) {
+      return currentUserPromise
     }
+    currentUserPromise = (async () => {
+      set({ userLoading: true })
+      try {
+        const user = await getCurrentUser()
+        set({ user, userLoaded: true })
+        return user
+      } finally {
+        set({ userLoading: false, userLoaded: true })
+        currentUserPromise = null
+      }
+    })()
+    return currentUserPromise
   },
   hasPermission: (permission) => hasPermission(get().user?.permissions, permission),
 }))

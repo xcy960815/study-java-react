@@ -95,8 +95,6 @@ const OperlogPage: React.FC = () => {
         const res = await getOperLogList({ ...values, pageNum: pn, pageSize: ps })
         setTableData(res.data)
         setTotal(res.total)
-      } catch {
-        message.error('获取操作日志失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
@@ -106,17 +104,15 @@ const OperlogPage: React.FC = () => {
 
   /** 获取操作类型字典 */
   const fetchBusinessTypeDict = useCallback(async () => {
-    try {
-      const res = await getDataDictList({
-        dictType: 'sys_oper_type',
-        status: 1,
-        pageNum: 1,
-        pageSize: 100,
-      })
-      setBusinessTypeOptions(res.data)
-    } catch {
-      message.error('获取操作类型字典失败，请稍后重试。')
-    }
+    // 失败提示由 request 拦截器统一弹出
+    await getDataDictList({
+      dictType: 'sys_oper_type',
+      status: 1,
+      pageNum: 1,
+      pageSize: 100,
+    })
+      .then((res) => setBusinessTypeOptions(res.data))
+      .catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -141,24 +137,16 @@ const OperlogPage: React.FC = () => {
   /** 批量删除 */
   const handleDeleteBatch = async () => {
     if (!selectedIds.length) return
-    try {
-      await deleteOperLog(selectedIds)
-      message.success('删除成功')
-      await fetchList(pageNum, pageSize)
-    } catch {
-      message.error('批量删除失败，请稍后重试。')
-    }
+    await deleteOperLog(selectedIds)
+    message.success('删除成功')
+    await fetchList(pageNum, pageSize)
   }
 
   /** 清空全部 */
   const handleCleanAll = async () => {
-    try {
-      await cleanOperLog()
-      message.success('清空成功')
-      await fetchList(pageNum, pageSize)
-    } catch {
-      message.error('清空日志失败，请稍后重试。')
-    }
+    await cleanOperLog()
+    message.success('清空成功')
+    await fetchList(pageNum, pageSize)
   }
 
   /** 表格列定义 */

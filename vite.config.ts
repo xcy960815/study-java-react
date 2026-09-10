@@ -39,10 +39,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('lodash')) {
-                // lodash 单独打包
-                return 'lodash'
-              }
               if (id.includes('axios')) {
                 // axios 单独打包
                 return 'axios'

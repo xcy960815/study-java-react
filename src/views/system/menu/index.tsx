@@ -81,7 +81,10 @@ const MenuList: React.FC = () => {
   // 弹窗状态
   const [modalVisible, setModalVisible] = useState(false)
 
-  // 弹窗标题
+  // 弹窗模式：create 新增/复制/创建子菜单（均走 insertMenu）/ edit 编辑
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+
+  // 弹窗标题（复制/创建子菜单保留具体文案，便于用户区分入口）
   const [modalTitle, setModalTitle] = useState('新增菜单')
 
   // 保存加载状态
@@ -101,8 +104,6 @@ const MenuList: React.FC = () => {
         setTreeData(res.data || [])
         setTotal(res.total || 0)
         setPagination({ current: page, pageSize: size })
-      } catch {
-        message.error('获取菜单列表失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
@@ -112,12 +113,10 @@ const MenuList: React.FC = () => {
 
   // 请求父菜单树（全量）
   const fetchParentTree = useCallback(async () => {
-    try {
-      const result = await getAllMenuTree()
-      setParentTreeData(filterDirTree(result || []))
-    } catch {
-      message.error('获取父级菜单失败，请稍后重试。')
-    }
+    // 失败提示由 request 拦截器统一弹出
+    await getAllMenuTree()
+      .then((result) => setParentTreeData(filterDirTree(result || [])))
+      .catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -143,6 +142,7 @@ const MenuList: React.FC = () => {
 
   // 新增菜单
   const handleAdd = () => {
+    setModalMode('create')
     setModalTitle('新增菜单')
     modalForm.resetFields()
     modalForm.setFieldsValue({ menuType: 0, orderNum: 0, parentId: null })
@@ -151,6 +151,7 @@ const MenuList: React.FC = () => {
 
   // 编辑菜单
   const handleEdit = (record: MenuVo) => {
+    setModalMode('edit')
     setModalTitle('编辑菜单')
     modalForm.setFieldsValue(record)
     setModalVisible(true)
@@ -158,6 +159,7 @@ const MenuList: React.FC = () => {
 
   // 复制菜单
   const handleCopy = (record: MenuVo) => {
+    setModalMode('create')
     setModalTitle('复制菜单')
     modalForm.setFieldsValue({ ...record, id: null })
     setModalVisible(true)
@@ -165,6 +167,7 @@ const MenuList: React.FC = () => {
 
   // 创建子菜单
   const handleCreateSub = (record: MenuVo) => {
+    setModalMode('create')
     setModalTitle('创建子菜单')
     modalForm.resetFields()
     modalForm.setFieldsValue({ menuType: 0, orderNum: 0, parentId: record.id })
@@ -173,13 +176,9 @@ const MenuList: React.FC = () => {
 
   // 删除菜单
   const handleDelete = async (record: MenuVo) => {
-    try {
-      await deleteMenu(record as MenuDto)
-      message.success('删除成功')
-      await fetchMenuList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('删除菜单失败，请稍后重试。')
-    }
+    await deleteMenu(record as MenuDto)
+    message.success('删除成功')
+    await fetchMenuList(pagination.current, pagination.pageSize)
   }
 
   // 弹窗确认
@@ -188,7 +187,7 @@ const MenuList: React.FC = () => {
       const values = await modalForm.validateFields()
       setSaveLoading(true)
       const { id, ...payload } = values
-      if (modalTitle === '新增菜单' || modalTitle === '复制菜单' || modalTitle === '创建子菜单') {
+      if (modalMode === 'create') {
         await insertMenu(payload)
       } else {
         await updateMenu({ ...payload, id })
@@ -197,8 +196,6 @@ const MenuList: React.FC = () => {
       setModalVisible(false)
       await fetchMenuList(pagination.current, pagination.pageSize)
       await fetchParentTree()
-    } catch (error) {
-      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }

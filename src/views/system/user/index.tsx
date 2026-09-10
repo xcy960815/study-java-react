@@ -1,5 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Form, Input, Select, Button, Table, Space, Tag, Modal, Popconfirm, message } from 'antd'
+import {
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Button,
+  Table,
+  Space,
+  Tag,
+  Modal,
+  Popconfirm,
+  message,
+} from 'antd'
 import type { TableColumnsType, TablePaginationConfig } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { getUserList, insertUser, updateUser, deleteUser } from '@/apis/system/user'
@@ -44,20 +56,21 @@ const UserList: React.FC = () => {
   // 弹窗状态
   const [modalVisible, setModalVisible] = useState(false)
 
-  // 弹窗标题
-  const [modalTitle, setModalTitle] = useState('新增用户')
+  // 弹窗模式：create 新增 / edit 编辑
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+
+  // 弹窗标题由模式推导
+  const modalTitle = modalMode === 'create' ? '新增用户' : '编辑用户'
 
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
   // 请求角色列表
   const fetchRoleList = useCallback(async () => {
-    try {
-      const roles = await getAllRoleList()
-      setRoleList(roles || [])
-    } catch {
-      message.error('获取角色列表失败，请稍后重试。')
-    }
+    // 失败提示由 request 拦截器统一弹出
+    await getAllRoleList()
+      .then((roles) => setRoleList(roles || []))
+      .catch(() => undefined)
   }, [])
 
   // 请求用户列表
@@ -74,8 +87,6 @@ const UserList: React.FC = () => {
         setTableData(res.data || [])
         setTotal(res.total || 0)
         setPagination({ current: page, pageSize: size })
-      } catch {
-        message.error('获取用户列表失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
@@ -105,29 +116,31 @@ const UserList: React.FC = () => {
   }
 
   const handleAdd = () => {
-    setModalTitle('新增用户')
+    setModalMode('create')
     modalForm.resetFields()
     setModalVisible(true)
   }
 
   const handleEdit = (record: UserInfoVo) => {
-    setModalTitle('编辑用户')
+    setModalMode('edit')
+    // 仅回填表单实际编辑的字段，避免把 roleNames/permissions 等展示字段带给后端
     modalForm.setFieldsValue({
-      ...record,
-      // Default mappings if necessary
+      id: record.id,
+      nickName: record.nickName,
+      loginName: record.loginName,
+      roleIds: record.roleIds,
+      age: record.age,
+      introduceSign: record.introduceSign,
+      address: record.address,
     })
     setModalVisible(true)
   }
 
   // 删除用户
   const handleDelete = async (record: UserInfoVo) => {
-    try {
-      await deleteUser(record)
-      message.success('删除成功')
-      await fetchUserList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('删除用户失败，请稍后重试。')
-    }
+    await deleteUser(record)
+    message.success('删除成功')
+    await fetchUserList(pagination.current, pagination.pageSize)
   }
 
   // 弹窗确认
@@ -136,7 +149,7 @@ const UserList: React.FC = () => {
       const values = await modalForm.validateFields()
       setSaveLoading(true)
       const { id, ...payload } = values
-      if (modalTitle === '新增用户') {
+      if (modalMode === 'create') {
         await insertUser(payload)
         message.success('新增成功')
       } else {
@@ -145,8 +158,6 @@ const UserList: React.FC = () => {
       }
       setModalVisible(false)
       await fetchUserList(pagination.current, pagination.pageSize)
-    } catch (e) {
-      console.error('Validation failed', e)
     } finally {
       setSaveLoading(false)
     }
@@ -310,7 +321,7 @@ const UserList: React.FC = () => {
             </Select>
           </Form.Item>
           <Form.Item name="age" label="用户年龄">
-            <Input placeholder="请输入用户年龄" type="number" />
+            <InputNumber placeholder="请输入用户年龄" min={0} max={150} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="introduceSign"

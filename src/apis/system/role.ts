@@ -59,8 +59,8 @@ export const getRoleList = (
   params: RoleListParams
 ): Promise<{ data: RoleInfoVo[]; total: number }> => {
   const { pageSize, pageNum, ...otherParams } = params
-  return request.get(`/role/getRoleList?pageSize=${pageSize}&pageNum=${pageNum}`, {
-    params: otherParams,
+  return request.get('/role/getRoleList', {
+    params: { pageNum, pageSize, ...otherParams },
   })
 }
 

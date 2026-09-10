@@ -1,44 +1,6 @@
-import {
-  ApplicationMenu,
-  Book,
-  ChartHistogram,
-  ChartLine,
-  FileText,
-  Form,
-  Login,
-  Monitor,
-  Robot,
-  Setting,
-  Shop,
-  ShoppingCart,
-  System,
-  User,
-} from '@icon-park/react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { getTabIconComponent } from './route-icons'
 import { svg2base64 } from './svg2base64'
-
-type IconParkIconComponent = typeof Setting
-
-/**
- * 路由图标名称与实际 IconPark 组件的映射表。
- * 这里显式按需导入，避免整包图标被打进产物。
- */
-const iconComponents: Record<string, IconParkIconComponent> = {
-  Setting,
-  Monitor,
-  Robot,
-  User,
-  Menu: ApplicationMenu,
-  Book,
-  FileText,
-  Line: ChartLine,
-  Bar: ChartHistogram,
-  ShoppingCart,
-  Shop,
-  Login,
-  Form,
-  System,
-}
 
 /**
  * 修改浏览器标签页标题
@@ -70,10 +32,10 @@ export const setTabIcon = (iconPath: string): void => {
 
 /**
  * 根据路由更新标签页图标
- * @param {string} iconName 来自 IconPark 的图标名称
+ * @param {string} iconName 路由图标名称（见 utils/route-icons 注册表）
  */
 export const changeTabIcon = (iconName: string): void => {
-  const IconComponent = iconComponents[iconName] || System
+  const IconComponent = getTabIconComponent(iconName)
   const size = 16
 
   // 将 React 图标组件渲染成静态 SVG，再转成 base64 favicon。

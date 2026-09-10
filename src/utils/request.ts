@@ -12,6 +12,13 @@ const baseUrl = import.meta.env.VITE_API_DOMAIN_PREFIX || ''
  */
 const withoutAuthorizationUrls = ['/login', '/register', '/captcha', '/refreshToken']
 
+/**
+ * 提取请求 URL 的路径部分（去掉查询串），用于精确匹配。
+ *
+ * @param url 请求 URL
+ */
+const getRequestPath = (url?: string) => (url ? url.split('?')[0] : url)
+
 let isRefreshing = false
 
 /**
@@ -84,15 +91,16 @@ axios.defaults.withCredentials = false
  */
 const request = axios.create({
   baseURL: baseUrl,
-  timeout: 60 * 1000 * 10,
+  timeout: 30 * 1000,
 })
 
 request.interceptors.request.use(
   (config) => {
     const token = getToken()
-    const isWithoutAuthorizationUrl = !withoutAuthorizationUrls.some((url) =>
-      config.url?.includes(url)
-    )
+    const requestPath = getRequestPath(config.url)
+    const isWithoutAuthorizationUrl = requestPath
+      ? !withoutAuthorizationUrls.includes(requestPath)
+      : true
     if (isWithoutAuthorizationUrl && token) {
       setAuthorizationHeader(config, token)
     }
@@ -120,7 +128,7 @@ request.interceptors.response.use(
       if (statusCode === loginEnum.InvalidToken) {
         const originalRequest = error.config as RetryRequestConfig
 
-        if (originalRequest.url?.includes('/refreshToken')) {
+        if (getRequestPath(originalRequest.url) === '/refreshToken') {
           handleInvalidSession()
           return Promise.reject(error)
         }

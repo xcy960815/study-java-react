@@ -48,8 +48,8 @@ export interface MenuListParams {
  */
 export const getMenuTree = (params: MenuListParams): Promise<{ data: MenuVo[]; total: number }> => {
   const { pageSize, pageNum, ...otherParams } = params
-  return request.get(`/studyJavaSysMenu/getMenuTree?pageSize=${pageSize}&pageNum=${pageNum}`, {
-    params: otherParams,
+  return request.get('/studyJavaSysMenu/getMenuTree', {
+    params: { pageNum, pageSize, ...otherParams },
   })
 }
 

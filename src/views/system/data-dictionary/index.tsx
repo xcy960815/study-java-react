@@ -81,8 +81,6 @@ const DataDictionaryList: React.FC = () => {
         setTableData(res.data || [])
         setTotal(res.total || 0)
         setPagination({ current: page, pageSize: size })
-      } catch {
-        message.error('获取数据字典失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
@@ -127,13 +125,9 @@ const DataDictionaryList: React.FC = () => {
 
   // 删除字典
   const handleDelete = async (record: DataDictionaryVo) => {
-    try {
-      await deleteDataDict(record.id)
-      message.success('删除成功')
-      await fetchDataDictList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('删除字典失败，请稍后重试。')
-    }
+    await deleteDataDict(record.id)
+    message.success('删除成功')
+    await fetchDataDictList(pagination.current, pagination.pageSize)
   }
 
   // 弹窗确认
@@ -150,8 +144,6 @@ const DataDictionaryList: React.FC = () => {
       message.success('操作成功')
       setModalVisible(false)
       await fetchDataDictList(pagination.current, pagination.pageSize)
-    } catch (error) {
-      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }

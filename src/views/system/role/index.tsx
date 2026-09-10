@@ -90,20 +90,21 @@ const RoleList: React.FC = () => {
   // 弹窗状态
   const [modalVisible, setModalVisible] = useState(false)
 
-  // 弹窗标题
-  const [modalTitle, setModalTitle] = useState('新增角色')
+  // 弹窗模式：create 新增 / edit 编辑
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
+
+  // 弹窗标题由模式推导
+  const modalTitle = modalMode === 'create' ? '新增角色' : '编辑角色'
 
   // 保存加载状态
   const [saveLoading, setSaveLoading] = useState(false)
 
   // 请求菜单树
   const fetchMenuTree = useCallback(async () => {
-    try {
-      const result = await getAllMenuTree()
-      setMenuTreeData(filterMenuTree(result || []))
-    } catch {
-      message.error('获取菜单树失败，请稍后重试。')
-    }
+    // 失败提示由 request 拦截器统一弹出
+    await getAllMenuTree()
+      .then((result) => setMenuTreeData(filterMenuTree(result || [])))
+      .catch(() => undefined)
   }, [])
 
   // 请求角色列表
@@ -120,8 +121,6 @@ const RoleList: React.FC = () => {
         setTableData(res.data || [])
         setTotal(res.total || 0)
         setPagination({ current: page, pageSize: size })
-      } catch {
-        message.error('获取角色列表失败，请稍后重试。')
       } finally {
         setLoading(false)
       }
@@ -152,7 +151,7 @@ const RoleList: React.FC = () => {
 
   // 新增角色
   const handleAdd = () => {
-    setModalTitle('新增角色')
+    setModalMode('create')
     modalForm.resetFields()
     modalForm.setFieldsValue({ roleSort: 0, status: 1 })
     setModalVisible(true)
@@ -160,42 +159,30 @@ const RoleList: React.FC = () => {
 
   // 编辑角色
   const handleEdit = (record: RoleInfoVo) => {
-    setModalTitle('编辑角色')
+    setModalMode('edit')
     modalForm.setFieldsValue(record)
     setModalVisible(true)
   }
 
   // 删除角色
   const handleDelete = async (record: RoleInfoVo) => {
-    try {
-      await deleteRole(record)
-      message.success('删除成功')
-      await fetchRoleList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('删除角色失败，请稍后重试。')
-    }
+    await deleteRole(record)
+    message.success('删除成功')
+    await fetchRoleList(pagination.current, pagination.pageSize)
   }
 
   // 禁用角色
   const handleDisable = async (record: RoleInfoVo) => {
-    try {
-      await disableRole(record)
-      message.success('操作成功')
-      await fetchRoleList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('禁用角色失败，请稍后重试。')
-    }
+    await disableRole(record)
+    message.success('操作成功')
+    await fetchRoleList(pagination.current, pagination.pageSize)
   }
 
   // 启用角色
   const handleEnable = async (record: RoleInfoVo) => {
-    try {
-      await enableRole(record)
-      message.success('操作成功')
-      await fetchRoleList(pagination.current, pagination.pageSize)
-    } catch {
-      message.error('启用角色失败，请稍后重试。')
-    }
+    await enableRole(record)
+    message.success('操作成功')
+    await fetchRoleList(pagination.current, pagination.pageSize)
   }
 
   // 弹窗确认
@@ -204,7 +191,7 @@ const RoleList: React.FC = () => {
       const values = await modalForm.validateFields()
       setSaveLoading(true)
       const { id, ...payload } = values
-      if (modalTitle === '新增角色') {
+      if (modalMode === 'create') {
         await insertRole(payload)
         message.success('新增成功')
       } else {
@@ -213,8 +200,6 @@ const RoleList: React.FC = () => {
       }
       setModalVisible(false)
       await fetchRoleList(pagination.current, pagination.pageSize)
-    } catch (error) {
-      console.error('Validation failed', error)
     } finally {
       setSaveLoading(false)
     }
@@ -361,10 +346,7 @@ const RoleList: React.FC = () => {
             label="角色编码"
             rules={[{ required: true, message: '请输入角色编码' }]}
           >
-            <Input
-              placeholder="请输入角色编码"
-              disabled={modalTitle === '编辑角色' && !!modalForm.getFieldValue('id')}
-            />
+            <Input placeholder="请输入角色编码" disabled={modalMode === 'edit'} />
           </Form.Item>
           <Form.Item
             name="roleSort"
