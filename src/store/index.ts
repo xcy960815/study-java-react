@@ -1,2 +1,2 @@
 export { useLoginStore } from './modules/login'
-// Other stores export will be added here
+export { useNotificationStore } from './modules/notification'

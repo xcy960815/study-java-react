@@ -1,22 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { Layout, Menu, Button, message } from 'antd'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import React, { Suspense, useEffect, useMemo, useState } from 'react'
+import { Layout, Menu, Avatar, Button, Dropdown, Space, Spin } from 'antd'
 import {
-  DesktopOutlined,
-  SettingOutlined,
-  RobotOutlined,
-  UserOutlined,
+  DownOutlined,
+  LockOutlined,
   LogoutOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
-  MenuOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  LineChartOutlined,
-  BarChartOutlined,
-  ShoppingCartOutlined,
-  ShopOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useLoginStore } from '@/store'
 import { layoutRoutes } from '@/router'
 import type { RouteHandle } from '@/router'
@@ -24,23 +16,10 @@ import type { RouteObject } from 'react-router-dom'
 import type { ItemType } from 'antd/es/menu/interface'
 import { useOrderNotifications } from '@/hooks/useOrderNotifications'
 import { hasPermission } from '@/utils/permission'
+import { getMenuIcon } from '@/utils/route-icons'
+import NotificationBell from '@/components/notification-bell'
 
 const { Header, Sider, Content } = Layout
-
-/** 图标名称到组件的映射表，新增图标在此添加即可 */
-const iconMap: Record<string, React.ReactNode> = {
-  Setting: <SettingOutlined />,
-  Monitor: <DesktopOutlined />,
-  Robot: <RobotOutlined />,
-  User: <UserOutlined />,
-  Menu: <MenuOutlined />,
-  Book: <BookOutlined />,
-  FileText: <FileTextOutlined />,
-  Line: <LineChartOutlined />,
-  Bar: <BarChartOutlined />,
-  ShoppingCart: <ShoppingCartOutlined />,
-  Shop: <ShopOutlined />,
-}
 
 /**
  * 根据路由配置自动生成菜单项
@@ -66,13 +45,17 @@ const generateMenuItems = (
       const children = 'children' in route ? route.children : undefined
       const visibleChildren = children?.filter((child) => {
         const h = child.handle as RouteHandle | undefined
-        return h?.title && !h?.hidden
+        return (
+          h?.title &&
+          !h?.hidden &&
+          (!h.requiredPermission || hasPermission(permissions, h.requiredPermission))
+        )
       })
 
       if (visibleChildren && visibleChildren.length > 0) {
         return {
           key: fullPath,
-          icon: iconMap[handle?.icon || ''] || null,
+          icon: getMenuIcon(handle?.icon),
           label: handle!.title,
           children: generateMenuItems(visibleChildren, permissions, fullPath),
         }
@@ -80,7 +63,7 @@ const generateMenuItems = (
 
       return {
         key: fullPath,
-        icon: iconMap[handle?.icon || ''] || null,
+        icon: getMenuIcon(handle?.icon),
         label: handle!.title,
       }
     })
@@ -93,7 +76,8 @@ const MainLayout: React.FC = () => {
   const { logout, user, loadCurrentUser } = useLoginStore()
 
   useEffect(() => {
-    void loadCurrentUser().catch(() => message.error('获取当前用户信息失败'))
+    // 失败提示由 request 拦截器统一弹出，这里无需重复提示。
+    void loadCurrentUser().catch(() => undefined)
   }, [loadCurrentUser])
 
   useOrderNotifications(user?.id)
@@ -106,6 +90,24 @@ const MainLayout: React.FC = () => {
     await logout()
     navigate('/login')
   }
+
+  /** 头像下拉菜单：个人中心 / 修改密码 / 退出登录 */
+  const handleUserMenuClick = ({ key }: { key: string }) => {
+    if (key === 'user-info') {
+      navigate('/user/info')
+    } else if (key === 'change-password') {
+      navigate('/password')
+    } else if (key === 'login-out') {
+      void handleLogout()
+    }
+  }
+
+  const userMenuItems = [
+    { key: 'user-info', icon: <UserOutlined />, label: '个人中心' },
+    { key: 'change-password', icon: <LockOutlined />, label: '修改密码' },
+    { type: 'divider' as const },
+    { key: 'login-out', icon: <LogoutOutlined />, label: '退出登录', danger: true },
+  ]
 
   /** 从路由配置动态生成的菜单项 */
   const menuItems = useMemo(
@@ -139,12 +141,34 @@ const MainLayout: React.FC = () => {
             onClick={() => setCollapsed(!collapsed)}
             className="w-16 h-16 text-lg"
           />
-          <Button type="link" danger icon={<LogoutOutlined />} onClick={handleLogout}>
-            退出登录
-          </Button>
+          <Space size={16}>
+            <NotificationBell />
+            <Dropdown
+              menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+              trigger={['click']}
+            >
+              <Button type="link" style={{ padding: 0 }}>
+                <Space size={4}>
+                  <Avatar size={28} src={user?.avatar}>
+                    {user?.nickName?.charAt(0)}
+                  </Avatar>
+                  {user?.nickName}
+                  <DownOutlined style={{ fontSize: 10 }} />
+                </Space>
+              </Button>
+            </Dropdown>
+          </Space>
         </Header>
         <Content className="m-6 min-h-70 overflow-auto rounded bg-white p-6 shadow-sm">
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="flex h-64 items-center justify-center">
+                <Spin size="large" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>
