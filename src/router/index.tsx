@@ -10,6 +10,7 @@ const DeepSeekChatPage = lazy(() => import('@/views/deepseek/chat'))
 const DeepSeekModelsPage = lazy(() => import('@/views/deepseek/models'))
 const FileUploadPage = lazy(() => import('@/views/file-upload/file-upload'))
 const GoodsPage = lazy(() => import('@/views/goods'))
+const GoodsCategoryPage = lazy(() => import('@/views/goods/category'))
 const LargeFileUploadPage = lazy(() => import('@/views/file-upload/large-file-upload'))
 const Login = lazy(() => import('@/views/login'))
 const NotFoundPage = lazy(() => import('@/views/error/not-found'))
@@ -118,8 +119,24 @@ export const layoutRoutes: RouteObject[] = [
   },
   {
     path: 'goods',
-    element: <GoodsPage />,
-    handle: { icon: 'Shop', title: '商品管理' },
+    handle: { icon: 'Shop', title: '商品' },
+    children: [
+      {
+        path: 'list',
+        element: <GoodsPage />,
+        handle: { icon: 'Shop', title: '商品列表' },
+      },
+      {
+        path: 'category',
+        element: <GoodsCategoryPage />,
+        handle: { icon: 'Book', title: '商品分类' },
+      },
+      {
+        index: true,
+        element: <Navigate to="list" replace />,
+        handle: { hidden: true },
+      },
+    ],
   },
   {
     path: 'user/info',

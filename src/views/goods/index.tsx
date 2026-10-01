@@ -6,6 +6,7 @@ import {
   Input,
   InputNumber,
   Select,
+  TreeSelect,
   Space,
   Tag,
   Modal,
@@ -15,7 +16,15 @@ import {
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
-import { getGoodsList, insertGoods, updateGoods, deleteGoods, type GoodsVo } from '@/apis/goods'
+import {
+  getGoodsCategoryTree,
+  getGoodsList,
+  insertGoods,
+  updateGoods,
+  deleteGoods,
+  type GoodsCategoryVo,
+  type GoodsVo,
+} from '@/apis/goods'
 import type { GoodsDto } from '@/apis/goods'
 import { getDataDictList, type DataDictionaryVo } from '@/apis/system/dataDict'
 import type { CheckoutDraftItem } from '@/apis/order'
@@ -26,6 +35,19 @@ import { saveCheckoutDraft } from '@/utils/order-workflow'
 type GoodsSearchValues = Pick<GoodsDto, 'goodsName' | 'goodsCategoryId' | 'goodsSellStatus'>
 
 type GoodsFormValues = GoodsDto
+
+interface CategoryTreeNode {
+  title: string
+  value: number
+  children?: CategoryTreeNode[]
+}
+
+const toCategoryTree = (nodes: GoodsCategoryVo[]): CategoryTreeNode[] =>
+  nodes.map((node) => ({
+    title: node.categoryName,
+    value: node.categoryId,
+    children: node.children?.length ? toCategoryTree(node.children) : undefined,
+  }))
 
 const GoodsPage: React.FC = () => {
   const defaultPageSize = 10
@@ -53,6 +75,7 @@ const GoodsPage: React.FC = () => {
   const [editRecord, setEditRecord] = useState<GoodsVo | null>(null)
   /** 上架状态字典 */
   const [sellStatusOptions, setSellStatusOptions] = useState<DataDictionaryVo[]>([])
+  const [categoryTree, setCategoryTree] = useState<GoodsCategoryVo[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
 
   /** 获取商品列表 */
@@ -86,6 +109,9 @@ const GoodsPage: React.FC = () => {
 
   useEffect(() => {
     void fetchSellStatusDict()
+    void getGoodsCategoryTree()
+      .then(setCategoryTree)
+      .catch(() => undefined)
     void fetchList(1, defaultPageSize)
   }, [fetchList, fetchSellStatusDict])
 
@@ -181,7 +207,13 @@ const GoodsPage: React.FC = () => {
     { title: '商品ID', dataIndex: 'goodsId', align: 'center', width: 80 },
     { title: '商品名称', dataIndex: 'goodsName', align: 'center', width: 150 },
     { title: '商品简介', dataIndex: 'goodsIntro', align: 'center', width: 200, ellipsis: true },
-    { title: '分类ID', dataIndex: 'goodsCategoryId', align: 'center', width: 80 },
+    {
+      title: '商品分类',
+      dataIndex: 'categoryName',
+      align: 'center',
+      width: 120,
+      render: (value: string | undefined) => value || '未分类',
+    },
     {
       title: '封面图',
       dataIndex: 'goodsCoverImg',
@@ -240,8 +272,14 @@ const GoodsPage: React.FC = () => {
         <Form.Item name="goodsName" label="商品名称">
           <Input placeholder="商品名称" allowClear style={{ width: 200 }} />
         </Form.Item>
-        <Form.Item name="goodsCategoryId" label="分类ID">
-          <InputNumber placeholder="分类ID" style={{ width: 150 }} min={0} />
+        <Form.Item name="goodsCategoryId" label="商品分类">
+          <TreeSelect
+            allowClear
+            treeDefaultExpandAll
+            placeholder="商品分类"
+            treeData={toCategoryTree(categoryTree)}
+            style={{ width: 200 }}
+          />
         </Form.Item>
         <Form.Item name="goodsSellStatus" label="上架状态">
           <Select placeholder="上架状态" allowClear style={{ width: 200 }}>
@@ -330,10 +368,14 @@ const GoodsPage: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="goodsCategoryId"
-            label="分类ID"
-            rules={[{ required: true, message: '请输入分类ID' }]}
+            label="商品分类"
+            rules={[{ required: true, message: '请选择商品分类' }]}
           >
-            <InputNumber placeholder="请输入分类ID" min={0} style={{ width: '100%' }} />
+            <TreeSelect
+              treeDefaultExpandAll
+              placeholder="请选择商品分类"
+              treeData={toCategoryTree(categoryTree)}
+            />
           </Form.Item>
           <Form.Item name="goodsCoverImg" label="封面图">
             <Input placeholder="请输入封面图URL" />

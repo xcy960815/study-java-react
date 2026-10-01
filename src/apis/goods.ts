@@ -10,6 +10,8 @@ export interface GoodsVo {
   goodsIntro: string
   /** 分类ID */
   goodsCategoryId: number
+  /** 分类名称 */
+  categoryName?: string
   /** 封面图 */
   goodsCoverImg: string
   /** 轮播图 */
@@ -73,6 +75,46 @@ export const insertGoods = (data: GoodsDto) => {
 /** 更新商品 */
 export const updateGoods = (data: GoodsDto) => {
   return request.post<boolean, boolean>('/goods/updateGoods', data)
+}
+
+/** 商品分类 */
+export interface GoodsCategoryVo {
+  categoryId: number
+  parentId: number
+  categoryName: string
+  categoryLevel: number
+  orderNum: number
+  remark?: string
+  children?: GoodsCategoryVo[]
+}
+
+/** 商品分类请求 */
+export interface GoodsCategoryDto {
+  categoryId?: number
+  parentId: number
+  categoryName: string
+  orderNum?: number
+  remark?: string
+}
+
+/** 分类树 */
+export const getGoodsCategoryTree = () => {
+  return request.get<GoodsCategoryVo[], GoodsCategoryVo[]>('/goods/category/tree')
+}
+
+/** 新增分类 */
+export const insertGoodsCategory = (data: GoodsCategoryDto) => {
+  return request.post<boolean, boolean>('/goods/category', data)
+}
+
+/** 更新分类 */
+export const updateGoodsCategory = (data: GoodsCategoryDto) => {
+  return request.put<boolean, boolean>('/goods/category', data)
+}
+
+/** 删除分类 */
+export const deleteGoodsCategory = (categoryId: number) => {
+  return request.delete<boolean, boolean>(`/goods/category/${categoryId}`)
 }
 
 /** 删除商品 */
