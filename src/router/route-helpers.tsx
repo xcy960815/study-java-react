@@ -1,4 +1,3 @@
-import { Button, Result } from 'antd'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -69,26 +68,4 @@ export const GuestOnlyRoute = ({ children }: { children: ReactNode }) => {
  */
 export const HomeRedirect = () => {
   return <Navigate to={getToken() ? defaultAuthedPath : '/login'} replace />
-}
-
-/**
- * 给尚未开放的功能模块提供统一的占位页。
- *
- * @param title 功能标题
- */
-export const ComingSoonPage = ({ title }: { title: string }) => {
-  const navigate = useNavigate()
-
-  return (
-    <Result
-      status="info"
-      title={`${title} 功能建设中`}
-      subTitle="入口先隐藏起来了，后续接入完整业务后再开放。"
-      extra={
-        <Button type="primary" onClick={() => navigate(defaultAuthedPath)}>
-          返回系统首页
-        </Button>
-      }
-    />
-  )
 }

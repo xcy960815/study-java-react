@@ -11,6 +11,7 @@ import {
   SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
+  UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import {
@@ -29,6 +30,7 @@ import {
   Shop,
   ShoppingCart,
   System,
+  Upload,
   User,
 } from '@icon-park/react'
 
@@ -61,6 +63,7 @@ export const routeIconRegistry: Record<string, RouteIconEntry> = {
   Bar: { menu: <BarChartOutlined />, tab: ChartHistogram },
   ShoppingCart: { menu: <ShoppingCartOutlined />, tab: ShoppingCart },
   Shop: { menu: <ShopOutlined />, tab: Shop },
+  Upload: { menu: <UploadOutlined />, tab: Upload },
   // Login/Form/Lock 仅用于隐藏的登录/注册/改密路由，System 是 favicon 的兜底图标，
   // 四者不会出现在侧边栏菜单中，无需提供 menu 图标。
   Login: { tab: Login },

@@ -2,18 +2,19 @@ import { lazy } from 'react'
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import MainLayout from '@/layout/index'
 import { changeTabIcon, changeTabTitle } from '@/utils/system-style'
-import {
-  ComingSoonPage,
-  GuestOnlyRoute,
-  HomeRedirect,
-  RequireAuth,
-  RouteEventBridge,
-} from './route-helpers'
+import { GuestOnlyRoute, HomeRedirect, RequireAuth, RouteEventBridge } from './route-helpers'
 
 // 路由级代码分割：页面仅在首次访问对应路由时才加载。
 const DashboardPage = lazy(() => import('@/views/dashboard'))
+const DeepSeekChatPage = lazy(() => import('@/views/deepseek/chat'))
+const DeepSeekModelsPage = lazy(() => import('@/views/deepseek/models'))
+const FileUploadPage = lazy(() => import('@/views/file-upload/file-upload'))
 const GoodsPage = lazy(() => import('@/views/goods'))
+const LargeFileUploadPage = lazy(() => import('@/views/file-upload/large-file-upload'))
 const Login = lazy(() => import('@/views/login'))
+const NotFoundPage = lazy(() => import('@/views/error/not-found'))
+const OllamaChatPage = lazy(() => import('@/views/ollama/chat'))
+const OllamaModelsPage = lazy(() => import('@/views/ollama/models'))
 const OperlogPage = lazy(() => import('@/views/monitor/operlog'))
 const ReportPage = lazy(() => import('@/views/monitor/report'))
 const ServerPage = lazy(() => import('@/views/monitor/server'))
@@ -131,14 +132,67 @@ export const layoutRoutes: RouteObject[] = [
     handle: { icon: 'Lock', title: '修改密码', hidden: true },
   },
   {
-    path: 'ollama',
-    element: <ComingSoonPage title="Ollama 模型" />,
-    handle: { icon: 'Robot', title: 'Ollama 模型', hidden: true },
+    path: 'deepseek',
+    handle: { icon: 'Robot', title: 'DeepSeek' },
+    children: [
+      {
+        path: 'models',
+        element: <DeepSeekModelsPage />,
+        handle: { icon: 'Robot', title: '模型列表' },
+      },
+      {
+        path: 'chat',
+        element: <DeepSeekChatPage />,
+        handle: { icon: 'Robot', title: '对话' },
+      },
+      {
+        index: true,
+        element: <Navigate to="models" replace />,
+        handle: { hidden: true },
+      },
+    ],
   },
   {
-    path: 'deepseek',
-    element: <ComingSoonPage title="DeepSeek" />,
-    handle: { icon: 'Robot', title: 'DeepSeek', hidden: true },
+    path: 'ollama',
+    handle: { icon: 'Robot', title: 'Ollama' },
+    children: [
+      {
+        path: 'models',
+        element: <OllamaModelsPage />,
+        handle: { icon: 'Robot', title: '模型列表' },
+      },
+      {
+        path: 'chat',
+        element: <OllamaChatPage />,
+        handle: { icon: 'Robot', title: '对话' },
+      },
+      {
+        index: true,
+        element: <Navigate to="models" replace />,
+        handle: { hidden: true },
+      },
+    ],
+  },
+  {
+    path: 'upload',
+    handle: { icon: 'Upload', title: '文件上传' },
+    children: [
+      {
+        path: 'file',
+        element: <FileUploadPage />,
+        handle: { icon: 'Upload', title: '文件上传' },
+      },
+      {
+        path: 'large-file',
+        element: <LargeFileUploadPage />,
+        handle: { icon: 'Upload', title: '大文件上传' },
+      },
+      {
+        index: true,
+        element: <Navigate to="file" replace />,
+        handle: { hidden: true },
+      },
+    ],
   },
 ]
 
@@ -176,6 +230,10 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: layoutRoutes,
+      },
+      {
+        path: '*',
+        element: <NotFoundPage />,
       },
     ],
   },

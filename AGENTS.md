@@ -13,13 +13,13 @@
 
 This repo is the React version of a three-part system; the sibling repos live next to it under `/Users/opera/Documents/my-repositories/`:
 
-- `/Users/opera/Documents/my-repositories/study-java` — the Java backend (Maven, `pom.xml`, `docker-compose.yml`) that both frontends call.
+- `/Users/opera/Documents/my-repositories/study-java` — the Java backend (Maven, `pom.xml`). Its `docker-compose.yml` creates `study-java-network` plus MySQL, Redis, and the API. This repo's own `docker-compose.yml` only runs the React container and joins that network.
 - `/Users/opera/Documents/my-repositories/study-java-vue` — the Vue 3 sibling frontend (Element Plus, Pinia, vue-router 4) for the same backend.
 
 Notes for agents:
 
 - The React version was written to mirror the Vue version's behavior (see the `request.ts` response interceptor comment); when backend contract questions arise, the Vue repo and the backend repo are the reference sources.
-- The Vue repo has a wider feature surface (real Ollama/DeepSeek pages, file upload, password change, error pages) where this repo still has hidden placeholders — use it to see how a feature is wired before porting.
+- Ollama、DeepSeek、文件上传和 404 已在本仓库实现。Vue 的对话页额外做了 Markdown 渲染，接口和页面入口以本仓库路由为准。
 - Do not carry conclusions across repos blindly: dependency usage differs (e.g. lodash/dayjs/uuid/MD5 are actually imported in the Vue repo, while they were unused and removed here), and shared patterns (axios timeout, URL building, error toasts) may have drifted apart.
 
 ## Start Here
