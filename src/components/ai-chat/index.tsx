@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Space, message } from 'antd'
-import { streamChat, type ChatMessage } from '@/utils/ai-stream'
+import { streamChat } from '@/utils/ai-stream'
+
+import { appendTurn, settleAssistant, writeAssistant, type TranscriptMessage } from './transcript'
 
 interface AiChatPanelProps {
   /** 当前对话使用的模型名，来自路由或页面输入 */
@@ -15,7 +17,7 @@ interface AiChatPanelProps {
  * DeepSeek 和 Ollama 共用的流式对话面板。
  */
 const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
@@ -30,17 +32,6 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
     transcript.scrollTop = transcript.scrollHeight
   }, [messages])
 
-  const updateAssistant = (content: string) => {
-    setMessages((current) => {
-      const next = [...current]
-      const last = next[next.length - 1]
-      if (last?.role === 'assistant') {
-        next[next.length - 1] = { ...last, content }
-      }
-      return next
-    })
-  }
-
   const handleSend = async () => {
     const question = draft.trim()
     if (!question || sendingRef.current) {
@@ -51,8 +42,12 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
       return
     }
 
-    const history = [...messages, { role: 'user' as const, content: question }]
-    setMessages([...history, { role: 'assistant', content: '' }])
+    const userId = crypto.randomUUID()
+    const assistantId = crypto.randomUUID()
+    const history = messages
+      .filter((item) => item.role === 'user' || item.content)
+      .map((item) => ({ role: item.role, content: item.content }))
+    setMessages((current) => appendTurn(current, question, { userId, assistantId }))
     setDraft('')
     sendingRef.current = true
     setSending(true)
@@ -65,11 +60,15 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
       await streamChat({
         endpoint,
         model,
-        messages: [{ role: 'system', content: '你是一个聊天机器人' }, ...history],
+        messages: [
+          { role: 'system', content: '你是一个聊天机器人' },
+          ...history,
+          { role: 'user', content: question },
+        ],
         signal: controller.signal,
         onDelta: (text) => {
           assistantText += text
-          updateAssistant(assistantText)
+          setMessages((current) => writeAssistant(current, assistantId, assistantText, true))
         },
       })
     } catch (error) {
@@ -78,6 +77,7 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
       }
       message.error(error instanceof Error ? error.message : '对话失败')
     } finally {
+      setMessages((current) => settleAssistant(current, assistantId))
       abortRef.current = null
       sendingRef.current = false
       setSending(false)
@@ -100,16 +100,13 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
         {messages.length === 0 ? (
           <div className="text-gray-400">输入内容后开始对话</div>
         ) : (
-          messages.map((item, index) => (
-            <div
-              key={`${item.role}-${index}`}
-              className={item.role === 'user' ? 'text-right' : 'text-left'}
-            >
+          messages.map((item) => (
+            <div key={item.id} className={item.role === 'user' ? 'text-right' : 'text-left'}>
               <div className="mb-1 text-xs text-gray-400">
                 {item.role === 'user' ? '我' : assistantName}
               </div>
               <div className="inline-block max-w-[80%] whitespace-pre-wrap rounded bg-white px-3 py-2 text-left shadow-sm">
-                {item.content || (sending && index === messages.length - 1 ? '思考中…' : '')}
+                {item.content || (item.pending ? '思考中…' : '')}
               </div>
             </div>
           ))
