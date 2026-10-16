@@ -3,6 +3,7 @@ import {
   BarChartOutlined,
   BookOutlined,
   DesktopOutlined,
+  ExperimentOutlined,
   FileTextOutlined,
   HomeOutlined,
   LineChartOutlined,
@@ -20,6 +21,7 @@ import {
   ChartHistogram,
   ChartLine,
   FileText,
+  Flask,
   Form,
   Home,
   Lock,
@@ -64,6 +66,7 @@ export const routeIconRegistry: Record<string, RouteIconEntry> = {
   ShoppingCart: { menu: <ShoppingCartOutlined />, tab: ShoppingCart },
   Shop: { menu: <ShopOutlined />, tab: Shop },
   Upload: { menu: <UploadOutlined />, tab: Upload },
+  Flask: { menu: <ExperimentOutlined />, tab: Flask },
   // Login/Form/Lock 仅用于隐藏的登录/注册/改密路由，System 是 favicon 的兜底图标，
   // 四者不会出现在侧边栏菜单中，无需提供 menu 图标。
   Login: { tab: Login },

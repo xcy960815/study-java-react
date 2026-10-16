@@ -23,6 +23,7 @@ const OrderPage = lazy(() => import('@/views/order'))
 const PasswordPage = lazy(() => import('@/views/password'))
 const Register = lazy(() => import('@/views/register'))
 const UserInfoPage = lazy(() => import('@/views/user/info'))
+const VirtualThreadsLabPage = lazy(() => import('@/views/lab/virtual-threads'))
 const DataDictionaryList = lazy(() => import('@/views/system/data-dictionary'))
 const MenuList = lazy(() => import('@/views/system/menu'))
 const RoleList = lazy(() => import('@/views/system/role'))
@@ -62,17 +63,17 @@ export const layoutRoutes: RouteObject[] = [
       {
         path: 'user',
         element: <UserList />,
-        handle: { icon: 'User', title: '用户管理' },
+        handle: { icon: 'User', title: '用户管理', requiredPermission: 'system:user:query' },
       },
       {
         path: 'role',
         element: <RoleList />,
-        handle: { icon: 'User', title: '角色管理' },
+        handle: { icon: 'User', title: '角色管理', requiredPermission: 'system:role:query' },
       },
       {
         path: 'menu',
         element: <MenuList />,
-        handle: { icon: 'Menu', title: '菜单管理' },
+        handle: { icon: 'Menu', title: '菜单管理', requiredPermission: 'system:menu:query' },
       },
       {
         path: 'data-dictionary',
@@ -124,12 +125,12 @@ export const layoutRoutes: RouteObject[] = [
       {
         path: 'list',
         element: <GoodsPage />,
-        handle: { icon: 'Shop', title: '商品列表' },
+        handle: { icon: 'Shop', title: '商品列表', requiredPermission: 'goods:query' },
       },
       {
         path: 'category',
         element: <GoodsCategoryPage />,
-        handle: { icon: 'Book', title: '商品分类' },
+        handle: { icon: 'Book', title: '商品分类', requiredPermission: 'goods:query' },
       },
       {
         index: true,
@@ -207,6 +208,22 @@ export const layoutRoutes: RouteObject[] = [
       {
         index: true,
         element: <Navigate to="file" replace />,
+        handle: { hidden: true },
+      },
+    ],
+  },
+  {
+    path: 'lab',
+    handle: { icon: 'Flask', title: 'Java 实验室' },
+    children: [
+      {
+        path: 'virtual-threads',
+        element: <VirtualThreadsLabPage />,
+        handle: { icon: 'Bar', title: '虚拟线程基准', requiredPermission: 'monitor:vthread:query' },
+      },
+      {
+        index: true,
+        element: <Navigate to="virtual-threads" replace />,
         handle: { hidden: true },
       },
     ],
