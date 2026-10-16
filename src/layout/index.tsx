@@ -61,6 +61,11 @@ const generateMenuItems = (
         }
       }
 
+      // 子路由存在但全部被权限过滤：整组菜单隐藏
+      if (children && visibleChildren?.length === 0) {
+        return null
+      }
+
       return {
         key: fullPath,
         icon: getMenuIcon(handle?.icon),
