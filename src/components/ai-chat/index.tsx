@@ -1,9 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Space, message } from 'antd'
+import { useRef, useState } from 'react'
+
+import { message } from 'antd'
+
 import { streamChat } from '@/utils/ai-stream'
 import { randomId } from '@/utils/random-id'
 
-import { appendTurn, settleAssistant, writeAssistant, type TranscriptMessage } from './transcript'
+import { defaultChatMessageRenderer } from './chat-message-renderer'
+import ChatInput from './chat-input'
+import ChatMessageList, { type RoleAlias } from './chat-message-list'
+import type { TranscriptMessage } from './transcript'
+import { appendTurn, settleAssistant, writeAssistant } from './transcript'
+import { useAutoScroll } from './use-auto-scroll'
+import { useCopyCode } from './use-copy-code'
+
+import 'highlight.js/styles/github-dark.css'
+import './markdown.css'
 
 interface AiChatPanelProps {
   /** 当前对话使用的模型名，来自路由或页面输入 */
@@ -15,27 +26,27 @@ interface AiChatPanelProps {
 }
 
 /**
- * DeepSeek 流式对话面板。
+ * DeepSeek 流式对话面板：markdown 渲染、代码块复制、粘底自动滚动、
+ * 思考动画与一键取消，视觉与交互对齐 Vue 端 ai-chat。
  */
 const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
-  const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const sendingRef = useRef(false)
-  const transcriptRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    const transcript = transcriptRef.current
-    if (!transcript) {
-      return
-    }
-    transcript.scrollTop = transcript.scrollHeight
-  }, [messages])
+  const roleAlias: RoleAlias = {
+    user: 'ME',
+    assistant: assistantName,
+    system: 'System',
+  }
 
-  const handleSend = async () => {
-    const question = draft.trim()
-    if (!question || sendingRef.current) {
+  const contentKey = `${messages.length}:${messages[messages.length - 1]?.content ?? ''}`
+  const { containerRef, handleScroll } = useAutoScroll(contentKey)
+  useCopyCode()
+
+  const handleSend = async (question: string) => {
+    if (sendingRef.current || !question) {
       return
     }
     if (!model) {
@@ -49,7 +60,6 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
       .filter((item) => item.role === 'user' || item.content)
       .map((item) => ({ role: item.role, content: item.content }))
     setMessages((current) => appendTurn(current, question, { userId, assistantId }))
-    setDraft('')
     sendingRef.current = true
     setSending(true)
 
@@ -85,56 +95,37 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
     }
   }
 
-  const handleStop = () => {
+  const handleCancel = () => {
     abortRef.current?.abort()
   }
 
   return (
     <div className="flex h-[calc(100vh-180px)] flex-col">
-      <div className="mb-3 text-sm text-gray-500">
+      <div className="mb-1 px-1 text-xs text-slate-500 dark:text-slate-400">
         当前模型：{model || '未选择'} · 助手：{assistantName}
       </div>
       <div
-        ref={transcriptRef}
-        className="flex-1 space-y-3 overflow-auto rounded border border-gray-100 bg-gray-50 p-4"
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="conversation-list my-2 flex-1 overflow-y-auto pr-1"
       >
         {messages.length === 0 ? (
-          <div className="text-gray-400">输入内容后开始对话</div>
+          <div className="px-4 py-8 text-sm text-slate-400 dark:text-slate-500">
+            输入内容后开始对话
+          </div>
         ) : (
-          messages.map((item) => (
-            <div key={item.id} className={item.role === 'user' ? 'text-right' : 'text-left'}>
-              <div className="mb-1 text-xs text-gray-400">
-                {item.role === 'user' ? '我' : assistantName}
-              </div>
-              <div className="inline-block max-w-[80%] whitespace-pre-wrap rounded bg-white px-3 py-2 text-left shadow-sm">
-                {item.content || (item.pending ? '思考中…' : '')}
-              </div>
-            </div>
-          ))
+          <ChatMessageList
+            messages={messages}
+            roleAlias={roleAlias}
+            renderContent={defaultChatMessageRenderer}
+          />
         )}
       </div>
-      <Space.Compact className="mt-3 w-full">
-        <Input.TextArea
-          value={draft}
-          autoSize={{ minRows: 2, maxRows: 4 }}
-          placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-          onChange={(event) => setDraft(event.target.value)}
-          onPressEnter={(event) => {
-            if (!event.shiftKey) {
-              event.preventDefault()
-              void handleSend()
-            }
-          }}
-        />
-      </Space.Compact>
-      <Space className="mt-3">
-        <Button type="primary" loading={sending} onClick={() => void handleSend()}>
-          发送
-        </Button>
-        <Button disabled={!sending} onClick={handleStop}>
-          停止
-        </Button>
-      </Space>
+      <ChatInput
+        pending={sending}
+        onSend={(question) => void handleSend(question)}
+        onCancel={handleCancel}
+      />
     </div>
   )
 }

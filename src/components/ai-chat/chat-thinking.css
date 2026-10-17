@@ -1,0 +1,82 @@
+/* 思考中九点动画（Vue 端 chat-thinking.less 移植） */
+
+.chat-thinking {
+  width: 17px;
+  height: 17px;
+  display: block;
+  font-size: 0;
+  color: #000;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.dark .chat-thinking {
+  color: #fff;
+}
+
+.chat-thinking .thinking-item {
+  width: 3px;
+  height: 3px;
+  margin: 1px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+  animation: ball-grid-beat infinite;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.chat-thinking .thinking-item:nth-child(1) {
+  animation-duration: 0.7s;
+  animation-delay: -0.7s;
+}
+
+.chat-thinking .thinking-item:nth-child(2) {
+  animation-duration: 0.8s;
+  animation-delay: -0.6s;
+}
+
+.chat-thinking .thinking-item:nth-child(3) {
+  animation-duration: 0.9s;
+  animation-delay: -0.5s;
+}
+
+.chat-thinking .thinking-item:nth-child(4) {
+  animation-duration: 1s;
+  animation-delay: -0.4s;
+}
+
+.chat-thinking .thinking-item:nth-child(5) {
+  animation-duration: 1.1s;
+  animation-delay: -0.3s;
+}
+
+.chat-thinking .thinking-item:nth-child(6) {
+  animation-duration: 1.2s;
+  animation-delay: -0.2s;
+}
+
+.chat-thinking .thinking-item:nth-child(7) {
+  animation-duration: 1.3s;
+  animation-delay: -0.1s;
+}
+
+.chat-thinking .thinking-item:nth-child(8) {
+  animation-duration: 1.4s;
+  animation-delay: 0s;
+}
+
+.chat-thinking .thinking-item:nth-child(9) {
+  animation-duration: 1.5s;
+  animation-delay: 0.1s;
+}
+
+@keyframes ball-grid-beat {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

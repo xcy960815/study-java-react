@@ -63,6 +63,10 @@ export default defineConfig(({ mode }) => {
                 // katex 单独打包
                 return 'katex'
               }
+              if (id.includes('markdown-it')) {
+                // markdown-it 单独打包（AI 对话渲染，懒加载）
+                return 'markdown-it'
+              }
               if (id.includes('highlight')) {
                 // highlight 单独打包
                 return 'highlight'
