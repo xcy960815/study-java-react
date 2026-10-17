@@ -1,23 +1,41 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react'
-import { Layout, Menu, Avatar, Button, Dropdown, Space, Spin } from 'antd'
+import {
+  Avatar,
+  Button,
+  ConfigProvider,
+  Dropdown,
+  Layout,
+  Menu,
+  Space,
+  Spin,
+  Tag,
+  Tooltip,
+  theme as antdTheme,
+} from 'antd'
 import {
   DownOutlined,
+  ExpandOutlined,
   LockOutlined,
   LogoutOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  SettingOutlined,
+  ShrinkOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { useLoginStore } from '@/store'
+import { useLoginStore, useThemeStore } from '@/store'
 import { layoutRoutes } from '@/router'
 import type { RouteHandle } from '@/router'
 import type { RouteObject } from 'react-router-dom'
 import type { ItemType } from 'antd/es/menu/interface'
+import { useFullscreen } from '@/hooks/useFullscreen'
 import { useOrderNotifications } from '@/hooks/useOrderNotifications'
 import { hasPermission } from '@/utils/permission'
 import { getMenuIcon } from '@/utils/route-icons'
 import NotificationBell from '@/components/notification-bell'
+import UpdateIndicator from '@/components/update-indicator'
+import ThemeSettingsDrawer from '@/components/theme-settings'
 
 const { Header, Sider, Content } = Layout
 
@@ -74,11 +92,23 @@ const generateMenuItems = (
     })
 }
 
+/** 计算当前是否应使用暗色主题 */
+const resolveIsDark = (mode: 'light' | 'dark' | 'system', systemPrefersDark: boolean) => {
+  return mode === 'dark' || (mode === 'system' && systemPrefersDark)
+}
+
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { logout, user, loadCurrentUser } = useLoginStore()
+  const mode = useThemeStore((state) => state.mode)
+  const primaryColor = useThemeStore((state) => state.primaryColor)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+  const { fullscreen, toggleFullscreen } = useFullscreen()
 
   useEffect(() => {
     // 失败提示由 request 拦截器统一弹出，这里无需重复提示。
@@ -96,20 +126,45 @@ const MainLayout: React.FC = () => {
     navigate('/login')
   }
 
-  /** 头像下拉菜单：个人中心 / 修改密码 / 退出登录 */
+  /** 头像下拉菜单：个人中心 / 修改密码 / 个性化设置 / 退出登录 */
   const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'user-info') {
       navigate('/user/info')
     } else if (key === 'change-password') {
       navigate('/password')
+    } else if (key === 'theme-settings') {
+      setSettingsOpen(true)
     } else if (key === 'login-out') {
       void handleLogout()
     }
   }
 
-  const userMenuItems = [
+  const isAdmin = hasPermission(user?.permissions || [], '*:*:*')
+
+  /** 下拉菜单首项：用户名片（头像 + 展示名 + 登录账号 + 角色），不可点击 */
+  const userMenuItems: ItemType[] = [
+    {
+      key: 'user-profile-card',
+      disabled: true,
+      label: (
+        <div className="flex items-center gap-3 py-1 pr-6">
+          <Avatar size={40} src={user?.avatar} shape="square" style={{ borderRadius: 8 }}>
+            {user?.nickName?.charAt(0)}
+          </Avatar>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-sm font-semibold">{user?.nickName ?? '未登录用户'}</span>
+            <span className="truncate text-xs text-gray-400">@{user?.loginName}</span>
+          </div>
+          <Tag color={isAdmin ? 'volcano' : 'default'} className="ml-auto shrink-0">
+            {isAdmin ? '管理员' : '普通用户'}
+          </Tag>
+        </div>
+      ),
+    },
+    { type: 'divider' as const },
     { key: 'user-info', icon: <UserOutlined />, label: '个人中心' },
     { key: 'change-password', icon: <LockOutlined />, label: '修改密码' },
+    { key: 'theme-settings', icon: <SettingOutlined />, label: '个性化设置' },
     { type: 'divider' as const },
     { key: 'login-out', icon: <LogoutOutlined />, label: '退出登录', danger: true },
   ]
@@ -120,63 +175,119 @@ const MainLayout: React.FC = () => {
     [user?.permissions]
   )
 
+  /** 深色偏好生效状态：显式偏好或跟随系统 */
+  const isDark = resolveIsDark(mode, systemPrefersDark)
+
+  useEffect(() => {
+    if (mode !== 'system') return
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches)
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
+  }, [mode])
+
+  /** 同步 html 根元素暗色类，供 Tailwind dark: 变体与全局 CSS 使用 */
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [isDark])
+
+  /** 主色写入 CSS 变量，供头像描边、hover 反馈等原生样式引用 */
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sjr-primary', primaryColor)
+  }, [primaryColor])
+
   return (
-    <Layout className="h-screen w-screen overflow-hidden">
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
-        <div className="h-16 flex items-center justify-center text-white font-bold text-lg">
-          {collapsed ? 'SJR' : import.meta.env.VITE_APP_TITLE || 'Study Java React'}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={['/' + location.pathname.split('/')[1]]}
-          onClick={handleMenuClick}
-          items={menuItems}
-        />
-      </Sider>
-      <Layout>
-        <Header
-          className="bg-white p-0 flex justify-between items-center pr-6 border-b border-gray-200"
-          style={{ padding: 0 }}
-        >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-16 h-16 text-lg"
+    <ConfigProvider
+      theme={{
+        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        token: { colorPrimary: primaryColor },
+      }}
+    >
+      <Layout className="h-screen w-screen overflow-hidden">
+        <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
+          <div className="h-16 flex items-center justify-center text-white font-bold text-lg">
+            {collapsed ? 'SJR' : import.meta.env.VITE_APP_TITLE || 'Study Java React'}
+          </div>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            defaultOpenKeys={['/' + location.pathname.split('/')[1]]}
+            onClick={handleMenuClick}
+            items={menuItems}
           />
-          <Space size={16}>
-            <NotificationBell />
-            <Dropdown
-              menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
-              trigger={['click']}
-            >
-              <Button type="link" style={{ padding: 0 }}>
-                <Space size={4}>
-                  <Avatar size={28} src={user?.avatar}>
+        </Sider>
+        <Layout>
+          <Header
+            className="flex justify-between items-center pr-4"
+            style={{
+              padding: 0,
+              background: 'var(--antd-bg-surface)',
+              borderBottom: '1px solid var(--antd-border)',
+            }}
+          >
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              className="w-16 h-16 text-lg"
+            />
+            <Space size={12} align="center">
+              {/* 新版本脉冲点（参考 guibiao），有更新才渲染 */}
+              <UpdateIndicator />
+              {/* 订单通知铃 */}
+              <NotificationBell />
+              {/* 全屏切换（参考 guibiao header-actions） */}
+              <Tooltip title={fullscreen ? '退出全屏' : '全屏'}>
+                <Button
+                  type="text"
+                  aria-label={fullscreen ? '退出全屏' : '全屏'}
+                  icon={fullscreen ? <ShrinkOutlined /> : <ExpandOutlined />}
+                  onClick={() => void toggleFullscreen()}
+                />
+              </Tooltip>
+              {/* 用户区：Vue 风格方块头像 + 用户名，hover 呈主色描边 */}
+              <Dropdown
+                menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+                trigger={['click']}
+              >
+                <button type="button" className="user-trigger" aria-label="用户菜单">
+                  <Avatar
+                    size={28}
+                    shape="square"
+                    src={user?.avatar}
+                    className="user-avatar"
+                    style={{ borderRadius: 6 }}
+                  >
                     {user?.nickName?.charAt(0)}
                   </Avatar>
-                  {user?.nickName}
+                  <span className="user-name">{user?.nickName}</span>
                   <DownOutlined style={{ fontSize: 10 }} />
-                </Space>
-              </Button>
-            </Dropdown>
-          </Space>
-        </Header>
-        <Content className="m-6 min-h-70 overflow-auto rounded bg-white p-6 shadow-sm">
-          <Suspense
-            fallback={
-              <div className="flex h-64 items-center justify-center">
-                <Spin size="large" />
-              </div>
-            }
+                </button>
+              </Dropdown>
+            </Space>
+          </Header>
+          <Content
+            className="layout-content m-6 min-h-70 overflow-auto rounded p-6"
+            style={{
+              background: 'var(--antd-bg-surface)',
+              boxShadow: '0 2px 12px 0 rgba(0,0,0,0.03)',
+            }}
           >
-            <Outlet />
-          </Suspense>
-        </Content>
+            <Suspense
+              fallback={
+                <div className="flex h-64 items-center justify-center">
+                  <Spin size="large" />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+      <ThemeSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </ConfigProvider>
   )
 }
 

@@ -1,5 +1,25 @@
 @import 'tailwindcss';
 
+/* Tailwind v4 类名暗色策略：html.dark 下 dark: 变体生效 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* 当前主色（由主题 Store 写入，头像描边/hover 反馈等原生样式引用） */
+  --sjr-primary: #1677ff;
+  /* 页面表层颜色：暗色模式下与 antd darkAlgorithm 的色值保持一致 */
+  --antd-bg-surface: #ffffff;
+  --antd-border: rgba(5, 5, 5, 0.15);
+  --antd-text: rgba(0, 0, 0, 0.88);
+  --antd-hover: rgba(0, 0, 0, 0.04);
+}
+
+html.dark {
+  --antd-bg-surface: #141414;
+  --antd-border: rgba(253, 253, 253, 0.15);
+  --antd-text: rgba(255, 255, 255, 0.85);
+  --antd-hover: rgba(255, 255, 255, 0.08);
+}
+
 html,
 body,
 #root {
@@ -9,4 +29,94 @@ body,
   padding: 0;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ========== 右上角用户区（样式参考 study-java-vue 头部） ========== */
+
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--antd-text);
+  transition: background-color 0.3s ease;
+}
+
+.user-trigger:hover {
+  background: var(--antd-hover);
+}
+
+.user-trigger .user-name {
+  color: var(--antd-text);
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* 方块头像：默认灰边，hover 变主色描边（与 Vue 头像一致） */
+.user-avatar {
+  border: 2px solid var(--antd-border) !important;
+  transition: border-color 0.3s ease;
+}
+
+.user-trigger:hover .user-avatar {
+  border-color: var(--sjr-primary) !important;
+}
+
+/* ========== 新版本脉冲圆点（参考 guibiao app-name 版本点） ========== */
+
+.update-dot-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.update-dot-trigger:hover,
+.update-dot-trigger:focus-visible {
+  background: rgba(250, 140, 22, 0.14);
+}
+
+.update-dot-trigger:focus-visible {
+  outline: 2px solid #fa8c16;
+  outline-offset: 2px;
+}
+
+.update-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #fa8c16;
+  box-shadow: 0 0 0 0 rgba(250, 140, 22, 0.55);
+  animation: update-dot-pulse 1.8s ease-out infinite;
+}
+
+@keyframes update-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(250, 140, 22, 0.55);
+  }
+
+  70% {
+    box-shadow: 0 0 0 7px rgba(250, 140, 22, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 140, 22, 0);
+  }
+}
+
+/* 弱动效环境下不播放脉冲动画 */
+@media (prefers-reduced-motion: reduce) {
+  .update-dot {
+    animation: none;
+  }
 }
