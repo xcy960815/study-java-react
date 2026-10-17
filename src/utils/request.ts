@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { message } from 'antd'
 import { eventEmitter } from './event-emits'
 import { clearAuthTokens, getRefreshToken, getToken, setRefreshToken, setToken } from './token'
@@ -74,6 +74,89 @@ const rejectQueuedRequests = (error: unknown) => {
 }
 
 /**
+ * 判断刷新失败是否属于「后端明确拒绝续期」：
+ * 400/401 才具备清理会话的资格；网络层失败（超时/断网/网关 5xx）
+ * 一律保留登录态，避免后端抖动被误判成会话过期。
+ *
+ * @param error 刷新请求异常
+ * @returns boolean
+ */
+const isServerDeclinedRefresh = (error: unknown) =>
+  error instanceof AxiosError &&
+  !!error.response &&
+  (error.response.status === loginEnum.InvalidToken || error.response.status === 400)
+
+/**
+ * 刷新失败收尾，按失败性质分流：
+ * - 非后端明确拒绝：保留登录态，仅拒绝排队请求，等待下一轮续期兜底；
+ * - 后端明确拒绝且本地 refresh token 未变：清理登录态并广播失效，跳回登录页；
+ * - 后端明确拒绝但本地已被其他标签页轮换：直接采用新 token 放行排队请求，避免误踢。
+ *
+ * @param staleRefreshToken 发起刷新时的 refresh token
+ * @param refreshError 刷新请求异常
+ */
+const handleRefreshFailure = (staleRefreshToken: string, refreshError: unknown) => {
+  if (!isServerDeclinedRefresh(refreshError)) {
+    rejectQueuedRequests(refreshError)
+    return
+  }
+  const currentRefreshToken = getRefreshToken()
+  if (currentRefreshToken && currentRefreshToken !== staleRefreshToken) {
+    // 存储已变化：其他标签页抢先完成轮换，沿用其新 token
+    const latestToken = getToken()
+    if (latestToken) resolveQueuedRequests(latestToken)
+    return
+  }
+  rejectQueuedRequests(refreshError)
+  clearAuthTokens()
+  eventEmitter.emit('token-invalid')
+}
+
+/**
+ * 单飞刷新 Token：并发调用共享同一次刷新请求，全部等待同一个结果。
+ * 成功时更新本地存储并放行排队请求；进行中的后续调用会挂起并共享结果。
+ *
+ * @returns 新 access token
+ */
+const refreshTokens = async (): Promise<string> => {
+  if (isRefreshing) {
+    return new Promise<string>((resolve, reject) => {
+      requests.push({ resolve, reject })
+    })
+  }
+
+  const staleRefreshToken = getRefreshToken()
+  if (!staleRefreshToken) {
+    // 本地连 refresh token 都没有，视为会话结束
+    const error = new Error('本地无 Refresh Token')
+    rejectQueuedRequests(error)
+    clearAuthTokens()
+    eventEmitter.emit('token-invalid')
+    throw error
+  }
+
+  isRefreshing = true
+  try {
+    const { data } = await axios.post<RefreshResponse>(baseUrl + '/refreshToken', {
+      refreshToken: staleRefreshToken,
+    })
+    if (data && data.token) {
+      setToken(data.token)
+      setRefreshToken(data.refreshToken)
+      resolveQueuedRequests(data.token)
+      return data.token
+    }
+    // 理论上后端总是返回新 token；异常响应交给统一失败收尾
+    throw new Error('刷新 Token 响应无效')
+  } catch (refreshError) {
+    handleRefreshFailure(staleRefreshToken, refreshError)
+    throw refreshError
+  } finally {
+    isRefreshing = false
+  }
+}
+
+/**
  * 统一处理无效会话：
  * 清理本地登录态、终止排队请求，并广播 token 失效事件。
  */
@@ -134,49 +217,13 @@ request.interceptors.response.use(
         }
 
         if (!originalRequest._retry) {
-          if (isRefreshing) {
-            return new Promise((resolve, reject) => {
-              requests.push({
-                resolve: (token: string) => {
-                  setAuthorizationHeader(originalRequest, token)
-                  resolve(request(originalRequest))
-                },
-                reject,
-              })
-            })
-          }
-
           originalRequest._retry = true
-          isRefreshing = true
-
           try {
-            const refreshToken = getRefreshToken()
-
-            if (!refreshToken) {
-              handleInvalidSession()
-              return Promise.reject(error)
-            }
-
-            const { data } = await axios.post<RefreshResponse>(baseUrl + '/refreshToken', {
-              refreshToken,
-            })
-
-            if (data && data.token) {
-              setToken(data.token)
-              setRefreshToken(data.refreshToken)
-
-              resolveQueuedRequests(data.token)
-
-              setAuthorizationHeader(originalRequest, data.token)
-              return request(originalRequest)
-            }
-
-            handleInvalidSession()
+            const newToken = await refreshTokens()
+            setAuthorizationHeader(originalRequest, newToken)
+            return request(originalRequest)
           } catch (refreshError) {
-            handleInvalidSession()
             return Promise.reject(refreshError)
-          } finally {
-            isRefreshing = false
           }
         }
       } else {
@@ -190,4 +237,4 @@ request.interceptors.response.use(
   }
 )
 
-export { request }
+export { request, refreshTokens }
