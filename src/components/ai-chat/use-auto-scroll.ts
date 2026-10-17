@@ -7,97 +7,61 @@ export interface UseAutoScrollResult {
   handleScroll: (event: UIEvent<HTMLDivElement>) => void
 }
 
-const THROTTLE_INTERVAL = 100
-
-const RESET_USER_SCROLLING_DELAY = 500
-
-const BOTTOM_TOLERANCE_PX = 5
+/** 触底判定容忍值（px） */
+export const BOTTOM_TOLERANCE_PX = 5
 
 /**
- * 粘底自动滚动：内容变化时跟随滚动；用户向上滚动时暂停，
- * 回到（近）底部后自动恢复跟踪（对应 Vue 端 useAutoScroll 行为）。
+ * 粘底自动滚动（scrollTop 单调性模型）：
+ *
+ * - 跟随中：内容变化时平滑滚动到底部；
+ *   程序化滚动产生的 scroll 事件始终向下单调（scrollTop 递增），不会打断跟随。
+ * - 用户上滚：任何非触底位置的 scrollTop 回退（滚轮 / 滚动条拖拽 / 触屏 / 键盘）
+ *   都意味着「用户想留在当前位置」，跟随立即停止。
+ * - 恢复：回答未完时用户再滚回（近）底部 → 触底必回粘，随即恢复跟随。
  *
  * @param contentKey 内容签名（消息条数 + 最新内容），变化即触发跟随
  */
 export function useAutoScroll(contentKey: string): UseAutoScrollResult {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const autoScrollRef = useRef(true)
-  const isUserScrollingRef = useRef(false)
+  const stickRef = useRef(true)
   const lastScrollTopRef = useRef(0)
-  const lastHandledAtRef = useRef(0)
-  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const isScrolledToBottom = () => {
-    const container = containerRef.current
-    if (!container) {
-      return true
-    }
-    const { scrollTop, scrollHeight, clientHeight } = container
-    // 允许 5px 的误差
-    return Math.abs(scrollHeight - scrollTop - clientHeight) < BOTTOM_TOLERANCE_PX
-  }
-
-  const scheduleResetUserScrolling = () => {
-    if (resetTimeoutRef.current) {
-      clearTimeout(resetTimeoutRef.current)
-    }
-    resetTimeoutRef.current = setTimeout(() => {
-      isUserScrollingRef.current = false
-    }, RESET_USER_SCROLLING_DELAY)
-  }
-
-  const scrollToBottom = () => {
-    const container = containerRef.current
-    if (!container || !autoScrollRef.current || isUserScrollingRef.current) {
+  // 内容变化时跟随到底部（仅在粘附状态下）
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element || !stickRef.current) {
       return
     }
-    container.scrollTo({
-      top: container.scrollHeight,
+    // 以当前（滚动前）位置作为首个滚动事件的回退判断基准
+    lastScrollTopRef.current = element.scrollTop
+    element.scrollTo({
+      top: element.scrollHeight,
       behavior: 'smooth',
     })
-  }
-
-  useEffect(() => {
-    if (autoScrollRef.current && !isUserScrollingRef.current) {
-      scrollToBottom()
-    }
   }, [contentKey])
 
-  useEffect(
-    () => () => {
-      if (resetTimeoutRef.current) {
-        clearTimeout(resetTimeoutRef.current)
-      }
-    },
-    []
-  )
-
   const handleScroll = () => {
-    const now = Date.now()
-    if (now - lastHandledAtRef.current < THROTTLE_INTERVAL) {
-      return
-    }
-    lastHandledAtRef.current = now
-
-    const container = containerRef.current
-    if (!container) {
+    const element = containerRef.current
+    if (!element) {
       return
     }
 
-    const currentScrollTop = container.scrollTop
-    const isScrollingUp = currentScrollTop < lastScrollTopRef.current
+    const scrollTop = element.scrollTop
+    const distanceFromBottom = element.scrollHeight - scrollTop - element.clientHeight
+    const scrolledUp = scrollTop < lastScrollTopRef.current
 
-    // 更新滚动状态
-    isUserScrollingRef.current = true
-    lastScrollTopRef.current = currentScrollTop
+    // 始终以最新位置作为下一次方向判断的基准
+    lastScrollTopRef.current = scrollTop
 
-    // 如果滚动到底部，恢复自动滚动；向上滚动时禁用自动滚动
-    if (isScrolledToBottom()) {
-      autoScrollRef.current = true
-      scheduleResetUserScrolling()
-    } else if (isScrollingUp) {
-      autoScrollRef.current = false
-      scheduleResetUserScrolling()
+    // 触底必回粘：用户滚到底 ⇢ 恢复跟随
+    if (distanceFromBottom < BOTTOM_TOLERANCE_PX) {
+      stickRef.current = true
+      return
+    }
+
+    // 非触底位置的 scrollTop 回退只能是用户在往上滚 → 解除跟随
+    if (scrolledUp) {
+      stickRef.current = false
     }
   }
 
