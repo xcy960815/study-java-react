@@ -31,6 +31,7 @@ import type { RouteObject } from 'react-router-dom'
 import type { ItemType } from 'antd/es/menu/interface'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useOrderNotifications } from '@/hooks/useOrderNotifications'
+import { useResolvedIsDark } from '@/hooks/useResolvedTheme'
 import { hasPermission } from '@/utils/permission'
 import { getMenuIcon } from '@/utils/route-icons'
 import NotificationBell from '@/components/notification-bell'
@@ -93,21 +94,15 @@ const generateMenuItems = (
 }
 
 /** 计算当前是否应使用暗色主题 */
-const resolveIsDark = (mode: 'light' | 'dark' | 'system', systemPrefersDark: boolean) => {
-  return mode === 'dark' || (mode === 'system' && systemPrefersDark)
-}
-
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { logout, user, loadCurrentUser } = useLoginStore()
-  const mode = useThemeStore((state) => state.mode)
-  const primaryColor = useThemeStore((state) => state.primaryColor)
+  const primaryColors = useThemeStore((state) => state.primaryColors)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [systemPrefersDark, setSystemPrefersDark] = useState(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches
-  )
+  const isDark = useResolvedIsDark()
+  const resolvedPrimaryColor = isDark ? primaryColors.dark : primaryColors.light
   const { fullscreen, toggleFullscreen } = useFullscreen()
 
   useEffect(() => {
@@ -175,32 +170,23 @@ const MainLayout: React.FC = () => {
     [user?.permissions]
   )
 
-  /** 深色偏好生效状态：显式偏好或跟随系统 */
-  const isDark = resolveIsDark(mode, systemPrefersDark)
-
-  useEffect(() => {
-    if (mode !== 'system') return
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches)
-    media.addEventListener('change', handleChange)
-    return () => media.removeEventListener('change', handleChange)
-  }, [mode])
+  /** 系统深色偏好的监听由 useResolvedIsDark 内部处理（跟随系统模式） */
 
   /** 同步 html 根元素暗色类，供 Tailwind dark: 变体与全局 CSS 使用 */
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
 
-  /** 主色写入 CSS 变量，供头像描边、hover 反馈等原生样式引用 */
+  /** 双值主色取当前模式侧后写入 CSS 变量，供头像描边、hover 反馈等原生样式引用 */
   useEffect(() => {
-    document.documentElement.style.setProperty('--sjr-primary', primaryColor)
-  }, [primaryColor])
+    document.documentElement.style.setProperty('--sjr-primary', resolvedPrimaryColor)
+  }, [resolvedPrimaryColor])
 
   return (
     <ConfigProvider
       theme={{
         algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        token: { colorPrimary: primaryColor },
+        token: { colorPrimary: resolvedPrimaryColor },
       }}
     >
       <Layout className="h-screen w-screen overflow-hidden">

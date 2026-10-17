@@ -10,6 +10,7 @@
   --antd-bg-surface: #ffffff;
   --antd-border: rgba(5, 5, 5, 0.15);
   --antd-text: rgba(0, 0, 0, 0.88);
+  --antd-text-secondary: rgba(0, 0, 0, 0.45);
   --antd-hover: rgba(0, 0, 0, 0.04);
 }
 
@@ -17,6 +18,7 @@ html.dark {
   --antd-bg-surface: #141414;
   --antd-border: rgba(253, 253, 253, 0.15);
   --antd-text: rgba(255, 255, 255, 0.85);
+  --antd-text-secondary: rgba(255, 255, 255, 0.45);
   --antd-hover: rgba(255, 255, 255, 0.08);
 }
 
@@ -119,4 +121,265 @@ body,
   .update-dot {
     animation: none;
   }
+}
+
+/* ========== 个性化设置抽屉（迁移自 guibiao personalization-drawer） ========== */
+
+.theme-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.theme-drawer__section {
+  border-top: 1px solid var(--antd-border);
+  padding-top: 24px;
+}
+
+.theme-drawer__section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.theme-drawer__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.theme-drawer__title {
+  color: var(--antd-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-drawer__description {
+  color: var(--antd-text-secondary);
+  font-size: 12px;
+}
+
+/* ---------- 外观主题：迷你界面预览卡 ---------- */
+
+.theme-drawer__theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.theme-drawer__theme-option {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+  padding: 8px;
+  border: 1px solid var(--antd-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--antd-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.theme-drawer__theme-option:hover {
+  border-color: var(--sjr-primary);
+}
+
+.theme-drawer__theme-option.is-active {
+  border-color: var(--sjr-primary);
+  box-shadow: 0 0 0 1px var(--sjr-primary);
+}
+
+.theme-drawer__theme-option.is-active .theme-preview__label {
+  color: var(--sjr-primary);
+  font-weight: 600;
+}
+
+.theme-preview {
+  display: flex;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  border-radius: 5px;
+  background: #f4f6f8;
+}
+
+.theme-preview--dark {
+  border-color: #414348;
+  background: #18191b;
+}
+
+.theme-preview--system {
+  border-color: var(--antd-border);
+  background: linear-gradient(90deg, #f4f6f8 50%, #18191b 50%);
+}
+
+.theme-preview__sidebar {
+  width: 23%;
+  flex-shrink: 0;
+  background: #e8ebef;
+}
+
+.theme-preview--dark .theme-preview__sidebar {
+  background: #292b2f;
+}
+
+.theme-preview--system .theme-preview__sidebar {
+  background: linear-gradient(90deg, #e8ebef 50%, #292b2f 50%);
+}
+
+.theme-preview__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 13px 10px;
+}
+
+.theme-preview__content span {
+  display: block;
+  height: 8px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.theme-preview__content span:last-child {
+  width: 66%;
+}
+
+.theme-preview--dark .theme-preview__content span {
+  background: #36383d;
+}
+
+.theme-preview--system .theme-preview__content span {
+  background: linear-gradient(90deg, #ffffff 50%, #36383d 50%);
+}
+
+.theme-preview__label {
+  color: var(--antd-text);
+  font-size: 13px;
+}
+
+.theme-preview__description {
+  color: var(--antd-text-secondary);
+  font-size: 11px;
+}
+
+/* ---------- 主题色彩：暗亮双值渐变色卡 ---------- */
+
+.theme-drawer__color-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.theme-drawer__color-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 5px;
+  border: 1px solid var(--antd-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--antd-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.theme-drawer__color-option:hover {
+  border-color: var(--sjr-primary);
+}
+
+.theme-drawer__color-option.is-active {
+  border-color: var(--sjr-primary);
+  background: color-mix(in srgb, var(--sjr-primary) 7%, transparent);
+  box-shadow: 0 0 0 1px var(--sjr-primary);
+  color: var(--sjr-primary);
+}
+
+.theme-drawer__swatch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
+  transition: transform 0.2s ease;
+}
+
+.theme-drawer__color-option:hover .theme-drawer__swatch {
+  transform: scale(1.08);
+}
+
+.theme-drawer__swatch-check {
+  display: inline-block;
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.theme-drawer__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-drawer__half-match {
+  color: var(--antd-text-secondary);
+  font-size: 10px;
+}
+
+/* ---------- 自定义主色行 ---------- */
+
+.theme-drawer__custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px dashed var(--antd-border);
+  border-radius: 7px;
+}
+
+.theme-drawer__custom-label {
+  color: var(--antd-text);
+  font-size: 13px;
+}
+
+.theme-drawer__custom-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-drawer__custom-value {
+  color: var(--antd-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.theme-drawer__footnote {
+  border-top: 1px solid var(--antd-border);
+  padding-top: 12px;
 }

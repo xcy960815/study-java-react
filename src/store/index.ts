@@ -1,5 +1,5 @@
 export { useLoginStore } from './modules/login'
 export { useNotificationStore } from './modules/notification'
 export { useThemeStore } from './modules/theme'
-export type { ThemeMode, PrimaryColorOption } from './modules/theme'
-export { PRIMARY_COLOR_OPTIONS } from './modules/theme'
+export type { ThemeMode, PrimaryColors, PresetThemeColor } from './modules/theme'
+export { PRESET_THEME_COLORS } from './modules/theme'
