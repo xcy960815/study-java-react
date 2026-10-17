@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AppNotification } from '@/utils/notification'
+import { randomId } from '@/utils/random-id'
 
 /** 本地通知上限，超出裁掉最旧的 */
 const NOTIFICATION_LIMIT = 50
@@ -22,7 +23,7 @@ export const useNotificationStore = create<NotificationState>()(
       addNotification: (notification) =>
         set((state) => ({
           notifications: [
-            { ...notification, id: crypto.randomUUID(), createdAt: Date.now(), read: false },
+            { ...notification, id: randomId(), createdAt: Date.now(), read: false },
             ...state.notifications,
           ].slice(0, NOTIFICATION_LIMIT),
         })),

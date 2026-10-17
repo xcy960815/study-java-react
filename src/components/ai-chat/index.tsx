@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Space, message } from 'antd'
 import { streamChat } from '@/utils/ai-stream'
+import { randomId } from '@/utils/random-id'
 
 import { appendTurn, settleAssistant, writeAssistant, type TranscriptMessage } from './transcript'
 
@@ -42,8 +43,8 @@ const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
       return
     }
 
-    const userId = crypto.randomUUID()
-    const assistantId = crypto.randomUUID()
+    const userId = randomId()
+    const assistantId = randomId()
     const history = messages
       .filter((item) => item.role === 'user' || item.content)
       .map((item) => ({ role: item.role, content: item.content }))

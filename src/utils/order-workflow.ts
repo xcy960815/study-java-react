@@ -1,4 +1,5 @@
 import type { CheckoutDraftItem, PlaceOrderRequest } from '@/apis/order'
+import { randomId } from '@/utils/random-id'
 import {
   ORDER_ACTION_META,
   type OrderAction,
@@ -39,7 +40,7 @@ export const getOrCreatePaymentRequestId = (
   const key = getPaymentRequestStorageKey(orderId, payType)
   const existingRequestId = storage.getItem(key)
   if (existingRequestId) return existingRequestId
-  const requestId = crypto.randomUUID()
+  const requestId = randomId()
   storage.setItem(key, requestId)
   return requestId
 }
