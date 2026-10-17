@@ -48,7 +48,7 @@ const ServerPage = () => {
   const unsubscribeRef = useRef<(() => void) | null>(null)
 
   const { getAnimatedMetricNumber, animateMetricValues } = useMetricAnimation()
-  const { containerRef, renderChart } = useServerHistoryChart()
+  const { chartContainerRef, renderChart } = useServerHistoryChart()
 
   /** 历史趋势当前选中的指标键。 */
   const [selectedMetricKey, setSelectedMetricKey] = useState<ServerMetricKey>('cpu_usage')
@@ -244,7 +244,7 @@ const ServerPage = () => {
             >
               <Spin spinning={loadingHistory}>
                 <div style={{ position: 'relative', minHeight: 320 }}>
-                  <div ref={containerRef} style={{ height: 320 }} />
+                  <div ref={chartContainerRef} style={{ height: 320 }} />
                   {historyPoints.length === 0 && !loadingHistory && (
                     <div
                       style={{
