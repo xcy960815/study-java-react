@@ -54,7 +54,12 @@ export interface GoodsDto {
   goodsSellStatus?: number
 }
 
-/** 获取商品列表 */
+/**
+ * 获取商品列表。
+ *
+ * @param params - 商品查询条件与分页参数
+ * @returns 商品分页结果
+ */
 export const getGoodsList = (params: GoodsDto & { pageNum: number; pageSize: number }) => {
   return request.get<{ data: GoodsVo[]; total: number }, { data: GoodsVo[]; total: number }>(
     '/goods/getGoodsList',
@@ -62,22 +67,37 @@ export const getGoodsList = (params: GoodsDto & { pageNum: number; pageSize: num
   )
 }
 
-/** 获取商品详情 */
+/**
+ * 按条件获取商品详情。
+ *
+ * @param params - 商品查询条件（如商品ID）
+ * @returns 商品详情
+ */
 export const getGoodsInfo = (params: GoodsDto) => {
   return request.get<GoodsVo, GoodsVo>('/goods/getGoodsInfo', { params })
 }
 
-/** 新增商品 */
+/**
+ * 新增商品。
+ *
+ * @param data - 待新增的商品信息
+ * @returns 是否新增成功
+ */
 export const insertGoods = (data: GoodsDto) => {
   return request.put<boolean, boolean>('/goods/insertGoods', data)
 }
 
-/** 更新商品 */
+/**
+ * 更新商品信息。
+ *
+ * @param data - 待更新的商品信息
+ * @returns 是否更新成功
+ */
 export const updateGoods = (data: GoodsDto) => {
   return request.post<boolean, boolean>('/goods/updateGoods', data)
 }
 
-/** 商品分类 */
+/** 商品分类 Vo */
 export interface GoodsCategoryVo {
   categoryId: number
   parentId: number
@@ -88,7 +108,7 @@ export interface GoodsCategoryVo {
   children?: GoodsCategoryVo[]
 }
 
-/** 商品分类请求 */
+/** 商品分类请求参数 */
 export interface GoodsCategoryDto {
   categoryId?: number
   parentId: number
@@ -97,27 +117,51 @@ export interface GoodsCategoryDto {
   remark?: string
 }
 
-/** 分类树 */
+/**
+ * 获取商品分类树。
+ *
+ * @returns 商品分类树
+ */
 export const getGoodsCategoryTree = () => {
   return request.get<GoodsCategoryVo[], GoodsCategoryVo[]>('/goods/category/tree')
 }
 
-/** 新增分类 */
+/**
+ * 新增商品分类。
+ *
+ * @param data - 待新增的分类信息
+ * @returns 是否新增成功
+ */
 export const insertGoodsCategory = (data: GoodsCategoryDto) => {
   return request.post<boolean, boolean>('/goods/category', data)
 }
 
-/** 更新分类 */
+/**
+ * 更新商品分类。
+ *
+ * @param data - 待更新的分类信息
+ * @returns 是否更新成功
+ */
 export const updateGoodsCategory = (data: GoodsCategoryDto) => {
   return request.put<boolean, boolean>('/goods/category', data)
 }
 
-/** 删除分类 */
+/**
+ * 删除商品分类。
+ *
+ * @param categoryId - 分类ID
+ * @returns 是否删除成功
+ */
 export const deleteGoodsCategory = (categoryId: number) => {
   return request.delete<boolean, boolean>(`/goods/category/${categoryId}`)
 }
 
-/** 删除商品 */
+/**
+ * 删除商品。
+ *
+ * @param id - 商品ID
+ * @returns 是否删除成功
+ */
 export const deleteGoods = (id: number) => {
   return request.delete<boolean, boolean>('/goods/deleteGoods', { params: { id } })
 }

@@ -46,9 +46,10 @@ export interface DataDictListParams {
 }
 
 /**
- * 获取数据字典列表
- * @param {DataDictListParams} params - 查询参数
- * @returns {Promise<{ data: DataDictionaryVo[]; total: number }>} 数据字典列表及总数
+ * 获取数据字典列表。
+ *
+ * @param params - 查询参数
+ * @returns 数据字典列表及总数
  */
 export const getDataDictList = (
   params: DataDictListParams
@@ -57,27 +58,30 @@ export const getDataDictList = (
 }
 
 /**
- * 新增数据字典
- * @param {DataDictionaryDto} data - 数据字典信息
- * @returns {Promise<boolean>} 是否新增成功
+ * 新增数据字典。
+ *
+ * @param data - 数据字典信息
+ * @returns 是否新增成功
  */
 export const insertDataDict = (data: DataDictionaryDto): Promise<boolean> => {
   return request.post('/dataDict/insertDataDict', data)
 }
 
 /**
- * 修改数据字典
- * @param {DataDictionaryDto} data - 数据字典信息
- * @returns {Promise<boolean>} 是否修改成功
+ * 修改数据字典。
+ *
+ * @param data - 数据字典信息
+ * @returns 是否修改成功
  */
 export const updateDataDict = (data: DataDictionaryDto): Promise<boolean> => {
   return request.put('/dataDict/updateDataDict', data)
 }
 
 /**
- * 删除数据字典
- * @param {number} id - 字典ID
- * @returns {Promise<boolean>} 是否删除成功
+ * 删除数据字典。
+ *
+ * @param id - 字典ID
+ * @returns 是否删除成功
  */
 export const deleteDataDict = (id: number): Promise<boolean> => {
   return request.delete(`/dataDict/deleteDataDict/${id}`)

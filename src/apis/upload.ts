@@ -3,13 +3,19 @@ import { request } from '@/utils/request'
 
 const CHUNK_SIZE = 10 * 1024 * 1024
 
+/** 文件上传结果 */
 export interface UploadResult {
   filePath?: string
   status: string
   message?: string
 }
 
-/** antd Upload 交给 customRequest 的文件对象，字符串不是可上传内容 */
+/**
+ * 把 antd Upload 交给 customRequest 的对象转换为 File。
+ *
+ * @param file - Upload 回调里的文件对象；字符串不是可上传内容
+ * @returns 转换后的 File；无法转换时返回 null
+ */
 export const toUploadFile = (file: string | Blob): File | null => {
   if (typeof file === 'string') {
     return null
@@ -20,6 +26,12 @@ export const toUploadFile = (file: string | Blob): File | null => {
   return new File([file], 'upload.bin')
 }
 
+/**
+ * 把上传进度事件换算为百分比并回调。
+ *
+ * @param event - Axios 上传进度事件
+ * @param onProgress - 进度回调（0-100 整数）
+ */
 const reportProgress = (event: AxiosProgressEvent, onProgress?: (percent: number) => void) => {
   if (!onProgress || !event.total) {
     return
@@ -27,7 +39,13 @@ const reportProgress = (event: AxiosProgressEvent, onProgress?: (percent: number
   onProgress(Math.round((event.loaded / event.total) * 100))
 }
 
-/** 普通文件上传 */
+/**
+ * 普通文件上传。
+ *
+ * @param file - 待上传的文件
+ * @param onProgress - 上传进度回调（0-100）
+ * @returns 上传结果（文件路径或错误信息）
+ */
 export const uploadFile = (
   file: File,
   onProgress?: (percent: number) => void
@@ -43,6 +61,10 @@ export const uploadFile = (
 /**
  * 按 10MB 分片上传大文件。
  * 进度按已完成分片的平均值计算。
+ *
+ * @param file - 待上传的大文件
+ * @param onProgress - 上传进度回调（0-100）
+ * @returns 上传全部分片完成
  */
 export const uploadLargeFile = async (
   file: File,

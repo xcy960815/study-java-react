@@ -42,9 +42,10 @@ export interface MenuListParams {
 }
 
 /**
- * 获取菜单树（分页）
- * @param {MenuListParams} params - 查询参数
- * @returns {Promise<{ data: MenuVo[]; total: number }>} 菜单树列表及总数
+ * 获取菜单树（分页）。
+ *
+ * @param params - 查询参数
+ * @returns 菜单树列表及总数
  */
 export const getMenuTree = (params: MenuListParams): Promise<{ data: MenuVo[]; total: number }> => {
   const { pageSize, pageNum, ...otherParams } = params
@@ -54,35 +55,39 @@ export const getMenuTree = (params: MenuListParams): Promise<{ data: MenuVo[]; t
 }
 
 /**
- * 获取所有菜单树
- * @returns {Promise<MenuVo[]>} 全部菜单树
+ * 获取所有菜单树。
+ *
+ * @returns 全部菜单树
  */
 export const getAllMenuTree = (): Promise<MenuVo[]> => {
   return request.get('/studyJavaSysMenu/getAllMenuTree')
 }
 
 /**
- * 新增菜单
- * @param {MenuDto} data - 菜单信息
- * @returns {Promise<boolean>} 是否新增成功
+ * 新增菜单。
+ *
+ * @param data - 菜单信息
+ * @returns 是否新增成功
  */
 export const insertMenu = (data: MenuDto): Promise<boolean> => {
   return request.post('/studyJavaSysMenu/insertMenu', data)
 }
 
 /**
- * 更新菜单
- * @param {MenuDto} data - 菜单信息
- * @returns {Promise<boolean>} 是否更新成功
+ * 更新菜单。
+ *
+ * @param data - 菜单信息
+ * @returns 是否更新成功
  */
 export const updateMenu = (data: MenuDto): Promise<boolean> => {
   return request.put('/studyJavaSysMenu/updateMenu', data)
 }
 
 /**
- * 删除菜单
- * @param {MenuDto} data - 待删除的菜单信息
- * @returns {Promise<boolean>} 是否删除成功
+ * 删除菜单。
+ *
+ * @param data - 待删除的菜单信息
+ * @returns 是否删除成功
  */
 export const deleteMenu = (data: MenuDto): Promise<boolean> => {
   return request.delete('/studyJavaSysMenu/deleteMenu', { data })

@@ -43,17 +43,19 @@ export interface RoleListParams {
 }
 
 /**
- * 获取所有角色列表
- * @returns {Promise<RoleInfoVo[]>} 全部角色列表
+ * 获取所有角色列表。
+ *
+ * @returns 全部角色列表
  */
 export const getAllRoleList = (): Promise<RoleInfoVo[]> => {
   return request.get('/role/getAllRoleList')
 }
 
 /**
- * 获取角色列表（分页）
- * @param {RoleListParams} params - 查询参数
- * @returns {Promise<{ data: RoleInfoVo[]; total: number }>} 角色列表及总数
+ * 获取角色列表（分页）。
+ *
+ * @param params - 查询参数
+ * @returns 角色列表及总数
  */
 export const getRoleList = (
   params: RoleListParams
@@ -65,45 +67,50 @@ export const getRoleList = (
 }
 
 /**
- * 新增角色
- * @param {RoleInfoDto} data - 角色信息
- * @returns {Promise<boolean>} 是否新增成功
+ * 新增角色。
+ *
+ * @param data - 角色信息
+ * @returns 是否新增成功
  */
 export const insertRole = (data: RoleInfoDto): Promise<boolean> => {
   return request.post('/role/insertRole', data)
 }
 
 /**
- * 更新角色
- * @param {RoleInfoDto} data - 角色信息
- * @returns {Promise<boolean>} 是否更新成功
+ * 更新角色。
+ *
+ * @param data - 角色信息
+ * @returns 是否更新成功
  */
 export const updateRole = (data: RoleInfoDto): Promise<boolean> => {
   return request.put('/role/updateRole', data)
 }
 
 /**
- * 删除角色
- * @param {RoleInfoDto} data - 待删除的角色信息
- * @returns {Promise<boolean>} 是否删除成功
+ * 删除角色。
+ *
+ * @param data - 待删除的角色信息
+ * @returns 是否删除成功
  */
 export const deleteRole = (data: RoleInfoDto): Promise<boolean> => {
   return request.delete('/role/deleteRole', { data })
 }
 
 /**
- * 禁用角色
- * @param {RoleInfoDto} data - 待禁用的角色信息
- * @returns {Promise<boolean>} 是否禁用成功
+ * 禁用角色。
+ *
+ * @param data - 待禁用的角色信息
+ * @returns 是否禁用成功
  */
 export const disableRole = (data: RoleInfoDto): Promise<boolean> => {
   return request.post('/role/disableRole', data)
 }
 
 /**
- * 启用角色
- * @param {RoleInfoDto} data - 待启用的角色信息
- * @returns {Promise<boolean>} 是否启用成功
+ * 启用角色。
+ *
+ * @param data - 待启用的角色信息
+ * @returns 是否启用成功
  */
 export const enableRole = (data: RoleInfoDto): Promise<boolean> => {
   return request.post('/role/enableRole', data)

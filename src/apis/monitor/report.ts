@@ -8,7 +8,11 @@ export interface DailyReportVo {
   totalRevenue: number
 }
 
-/** 获取昨日经营报表数据 */
+/**
+ * 获取昨日经营报表数据。
+ *
+ * @returns 昨日订单总数与销售总额
+ */
 export const getDailyReportData = () => {
   return request.get<DailyReportVo, DailyReportVo>('/monitor/report/daily')
 }
