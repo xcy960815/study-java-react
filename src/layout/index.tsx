@@ -13,12 +13,14 @@ import {
   theme as antdTheme,
 } from 'antd'
 import {
+  BgColorsOutlined,
   DownOutlined,
   ExpandOutlined,
   LockOutlined,
   LogoutOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  MoonOutlined,
   SettingOutlined,
   ShrinkOutlined,
   UserOutlined,
@@ -100,6 +102,7 @@ const MainLayout: React.FC = () => {
   const location = useLocation()
   const { logout, user, loadCurrentUser } = useLoginStore()
   const primaryColors = useThemeStore((state) => state.primaryColors)
+  const setMode = useThemeStore((state) => state.setMode)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const isDark = useResolvedIsDark()
   const resolvedPrimaryColor = isDark ? primaryColors.dark : primaryColors.light
@@ -230,6 +233,24 @@ const MainLayout: React.FC = () => {
                   aria-label={fullscreen ? '退出全屏' : '全屏'}
                   icon={fullscreen ? <ShrinkOutlined /> : <ExpandOutlined />}
                   onClick={() => void toggleFullscreen()}
+                />
+              </Tooltip>
+              {/* 明暗快速切换（与 Vue 右上角对齐） */}
+              <Tooltip title={isDark ? '切换到亮色' : '切换到暗色'}>
+                <Button
+                  type="text"
+                  aria-label={isDark ? '切换到亮色' : '切换到暗色'}
+                  icon={<MoonOutlined />}
+                  onClick={() => setMode(isDark ? 'light' : 'dark')}
+                />
+              </Tooltip>
+              {/* 打开个性化设置抽屉（与 Vue 主题笔一致） */}
+              <Tooltip title="个性化设置">
+                <Button
+                  type="text"
+                  aria-label="个性化设置"
+                  icon={<BgColorsOutlined />}
+                  onClick={() => setSettingsOpen(true)}
                 />
               </Tooltip>
               {/* 用户区：Vue 风格方块头像 + 用户名，hover 呈主色描边 */}
