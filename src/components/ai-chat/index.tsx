@@ -10,11 +10,11 @@ interface AiChatPanelProps {
   /** 助手消息展示名 */
   assistantName: string
   /** 后端流式对话路径 */
-  endpoint: '/deepseek/completions' | '/ollama/completions'
+  endpoint: '/deepseek/completions'
 }
 
 /**
- * DeepSeek 和 Ollama 共用的流式对话面板。
+ * DeepSeek 流式对话面板。
  */
 const AiChatPanel = ({ model, assistantName, endpoint }: AiChatPanelProps) => {
   const [messages, setMessages] = useState<TranscriptMessage[]>([])

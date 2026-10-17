@@ -14,9 +14,6 @@ const GoodsCategoryPage = lazy(() => import('@/views/goods/category'))
 const LargeFileUploadPage = lazy(() => import('@/views/file-upload/large-file-upload'))
 const Login = lazy(() => import('@/views/login'))
 const NotFoundPage = lazy(() => import('@/views/error/not-found'))
-const OllamaChatPage = lazy(() => import('@/views/ollama/chat'))
-const OllamaModelsPage = lazy(() => import('@/views/ollama/models'))
-const OperlogPage = lazy(() => import('@/views/monitor/operlog'))
 const ReportPage = lazy(() => import('@/views/monitor/report'))
 const ServerPage = lazy(() => import('@/views/monitor/server'))
 const OrderPage = lazy(() => import('@/views/order'))
@@ -92,11 +89,6 @@ export const layoutRoutes: RouteObject[] = [
     handle: { icon: 'Monitor', title: '监控管理' },
     children: [
       {
-        path: 'operlog',
-        element: <OperlogPage />,
-        handle: { icon: 'FileText', title: '操作日志' },
-      },
-      {
         path: 'server',
         element: <ServerPage />,
         handle: { icon: 'Line', title: '服务监控' },
@@ -108,7 +100,7 @@ export const layoutRoutes: RouteObject[] = [
       },
       {
         index: true,
-        element: <Navigate to="operlog" replace />,
+        element: <Navigate to="server" replace />,
         handle: { hidden: true },
       },
     ],
@@ -161,27 +153,6 @@ export const layoutRoutes: RouteObject[] = [
       {
         path: 'chat',
         element: <DeepSeekChatPage />,
-        handle: { icon: 'Robot', title: '对话' },
-      },
-      {
-        index: true,
-        element: <Navigate to="models" replace />,
-        handle: { hidden: true },
-      },
-    ],
-  },
-  {
-    path: 'ollama',
-    handle: { icon: 'Robot', title: 'Ollama' },
-    children: [
-      {
-        path: 'models',
-        element: <OllamaModelsPage />,
-        handle: { icon: 'Robot', title: '模型列表' },
-      },
-      {
-        path: 'chat',
-        element: <OllamaChatPage />,
         handle: { icon: 'Robot', title: '对话' },
       },
       {
