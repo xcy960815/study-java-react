@@ -21,6 +21,8 @@ export interface JvmInfo {
   max: number
   free: number
   used: number
+  /** JVM 内存使用率 (%) */
+  usage: number
   version: string
   startTime: string
   runTime: string
@@ -76,4 +78,59 @@ export const startServerMonitor = () => {
  */
 export const stopServerMonitor = () => {
   return request.post<string, string>('/monitor/server/stop')
+}
+
+/** 监控指标历史键 */
+export type ServerMetricKey = 'cpu_usage' | 'memory_usage' | 'jvm_usage' | 'disk_usage'
+
+/** 监控指标卡数据 */
+export interface ServerMetricValue {
+  /** 指标键 */
+  key: ServerMetricKey
+  /** 指标展示名 */
+  label: string
+  /** 指标单位 */
+  unit: string
+  /** 当前值（null 表示无数据） */
+  value: number | null
+  /** 指标状态 */
+  status: 'ok' | 'warning' | 'danger' | 'unavailable'
+}
+
+/** 单个趋势点（Unix 秒级时间戳） */
+export interface ServerMetricsHistoryPoint {
+  /** 采样时间（Unix 秒级时间戳） */
+  timestamp: number
+  /** 采样值 */
+  value: number
+}
+
+/** 监控指标历史趋势响应 */
+export interface ServerMetricsHistoryVo {
+  /** 指标键 */
+  metricKey: ServerMetricKey
+  /** 指标展示名 */
+  label: string
+  /** 指标单位 */
+  unit: string
+  /** 趋势点列表（按时间升序） */
+  points: ServerMetricsHistoryPoint[]
+}
+
+/**
+ * 查询服务器监控指标历史趋势。
+ *
+ * @param metricKey - 指标键（cpu_usage/memory_usage/jvm_usage/disk_usage）
+ * @param start - Unix 秒级起始时间（含）
+ * @param end - Unix 秒级结束时间（含）
+ * @returns 指标趋势数据（label/unit/points）
+ */
+export const getServerMetricsHistory = (
+  metricKey: ServerMetricKey,
+  start: number,
+  end: number
+): Promise<ServerMetricsHistoryVo> => {
+  return request.get<ServerMetricsHistoryVo, ServerMetricsHistoryVo>('/monitor/server/history', {
+    params: { metricKey, start, end },
+  })
 }

@@ -1,86 +1,45 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Card, Descriptions, Tag, Button, Spin, message, Row, Col } from 'antd'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Card,
+  Descriptions,
+  Tag,
+  Button,
+  message,
+  Select,
+  Segmented,
+  Empty,
+  Spin,
+  theme,
+} from 'antd'
 import { PlayCircleOutlined, PauseCircleOutlined } from '@ant-design/icons'
 import {
   getServerInfo,
   startServerMonitor,
   stopServerMonitor,
+  getServerMetricsHistory,
   type ServerInfoVo,
+  type ServerMetricKey,
+  type ServerMetricValue,
+  type ServerMetricsHistoryPoint,
 } from '@/apis/monitor/serverMonitor'
 import { getSharedWebSocketClient } from '@/utils/websocket'
+import { useMetricAnimation } from '@/hooks/useMetricAnimation'
+import { useServerHistoryChart } from '@/hooks/useServerHistoryChart'
+import MetricCard from '@/components/monitor/metric-card'
+import {
+  METRIC_OPTIONS,
+  RANGE_OPTIONS,
+  buildEmptyServerMetrics,
+  serverInfoToMetrics,
+} from './monitorPresentation'
 
-/** 仪表盘进度条组件 */
-const GaugeCard: React.FC<{ title: string; value: number; unit?: string }> = ({
-  title,
-  value,
-  unit = '%',
-}) => {
-  const percentage = Math.min(100, Math.max(0, value))
-  const getColor = () => {
-    if (percentage < 30) return '#52c41a'
-    if (percentage < 70) return '#faad14'
-    return '#ff4d4f'
-  }
-  return (
-    <Card title={title} size="small">
-      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <div
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: '50%',
-            border: `8px solid #f0f0f0`,
-            borderTopColor: getColor(),
-            borderRightColor: percentage > 25 ? getColor() : '#f0f0f0',
-            borderBottomColor: percentage > 50 ? getColor() : '#f0f0f0',
-            borderLeftColor: percentage > 75 ? getColor() : '#f0f0f0',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s',
-          }}
-        >
-          <span style={{ fontSize: 24, fontWeight: 'bold', color: getColor() }}>
-            {value}
-            {unit}
-          </span>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-/** 饼状信息卡片 */
-const PieInfoCard: React.FC<{
-  title: string
-  used: number
-  free: number
-  unit?: string
-}> = ({ title, used, free, unit = 'MB' }) => {
-  const total = used + free
-  const usedPct = total > 0 ? ((used / total) * 100).toFixed(1) : '0'
-  return (
-    <Card title={title} size="small">
-      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1890ff' }}>{usedPct}%</div>
-        <div style={{ marginTop: 12, color: '#666' }}>
-          已使用:{' '}
-          <strong>
-            {used} {unit}
-          </strong>{' '}
-          / 空闲:{' '}
-          <strong>
-            {free} {unit}
-          </strong>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-const ServerPage: React.FC = () => {
-  /** 服务器信息 */
+const ServerPage = () => {
+  /** antd 设计 token（明暗模式自适应） */
+  const { token } = theme.useToken()
+  /** 服务器信息快照（最新一次推送或拉取） */
   const [serverInfo, setServerInfo] = useState<ServerInfoVo | null>(null)
+  /** 指标卡数据，无数据时展示占位卡 */
+  const [metrics, setMetrics] = useState<ServerMetricValue[]>(() => buildEmptyServerMetrics())
   /** 加载状态 */
   const [loading, setLoading] = useState(false)
   /** 是否正在监控 */
@@ -88,15 +47,38 @@ const ServerPage: React.FC = () => {
   /** 监控订阅的取消函数，与订单通知共用同一条 STOMP 连接 */
   const unsubscribeRef = useRef<(() => void) | null>(null)
 
+  const { getAnimatedMetricNumber, animateMetricValues } = useMetricAnimation()
+  const { containerRef, renderChart } = useServerHistoryChart()
+
+  /** 历史趋势当前选中的指标键。 */
+  const [selectedMetricKey, setSelectedMetricKey] = useState<ServerMetricKey>('cpu_usage')
+  /** 历史趋势当前选中的时间范围（秒），默认 1 小时。 */
+  const [selectedRange, setSelectedRange] = useState(3600)
+  /** 历史趋势请求进行中标记。 */
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  /** 当前趋势点序列，用于图表空态判断。 */
+  const [historyPoints, setHistoryPoints] = useState<ServerMetricsHistoryPoint[]>([])
+
+  /** 用服务器信息快照刷新系统信息与指标卡，并驱动数字滚动。 */
+  const applyServerInfo = useCallback(
+    (info: ServerInfoVo) => {
+      setServerInfo(info)
+      const nextMetrics = serverInfoToMetrics(info)
+      setMetrics(nextMetrics)
+      animateMetricValues(nextMetrics)
+    },
+    [animateMetricValues]
+  )
+
   /** 获取服务器信息 */
   const fetchInfo = useCallback(async () => {
     try {
       const res = await getServerInfo()
-      setServerInfo(res)
+      applyServerInfo(res)
     } catch (err) {
       console.error('获取服务器信息失败:', err)
     }
-  }, [])
+  }, [applyServerInfo])
 
   /** 停止监控：先退订再通知后端停止推送 */
   const stopMonitor = useCallback(async () => {
@@ -120,7 +102,7 @@ const ServerPage: React.FC = () => {
       unsubscribeRef.current = getSharedWebSocketClient().subscribe<ServerInfoVo>(
         '/topic/server-monitor',
         (data) => {
-          setServerInfo(data)
+          applyServerInfo(data)
           setIsMonitoring(true)
         },
         (error) => {
@@ -138,8 +120,30 @@ const ServerPage: React.FC = () => {
     }
   }
 
+  /** 按当前指标与时间范围拉取历史趋势并渲染图表。 */
+  const refreshHistory = useCallback(async () => {
+    setLoadingHistory(true)
+    const end = Math.floor(Date.now() / 1000)
+    const start = end - selectedRange
+    try {
+      const response = await getServerMetricsHistory(selectedMetricKey, start, end)
+      setHistoryPoints(response.points || [])
+      renderChart(response)
+    } catch (err) {
+      console.error('加载历史趋势失败:', err)
+      setHistoryPoints([])
+      renderChart()
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [selectedMetricKey, selectedRange, renderChart])
+
   useEffect(() => {
-    fetchInfo()
+    void refreshHistory()
+  }, [refreshHistory])
+
+  useEffect(() => {
+    void fetchInfo()
     return () => {
       unsubscribeRef.current?.()
       unsubscribeRef.current = null
@@ -157,11 +161,13 @@ const ServerPage: React.FC = () => {
           marginBottom: 20,
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 24 }}>服务器监控</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 24 }}>服务器监控</h2>
           <Tag color={isMonitoring ? 'success' : 'default'}>
             {isMonitoring ? '实时监控中' : '未连接'}
           </Tag>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!isMonitoring ? (
             <Button
               type="primary"
@@ -199,31 +205,72 @@ const ServerPage: React.FC = () => {
               </Descriptions>
             </Card>
 
-            {/* 监控卡片 */}
-            <Row gutter={20}>
-              <Col xs={24} sm={12}>
-                <GaugeCard title="CPU 使用率" value={serverInfo.cpu.used} />
-              </Col>
-              <Col xs={24} sm={12}>
-                <GaugeCard title="内存使用率" value={serverInfo.memory.usage} />
-              </Col>
-              <Col xs={24} sm={12} style={{ marginTop: 20 }}>
-                <PieInfoCard
-                  title="JVM 内存使用"
-                  used={serverInfo.jvm.used}
-                  free={serverInfo.jvm.free}
-                  unit="MB"
+            {/* 指标卡 */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              {metrics.map((metric) => (
+                <MetricCard
+                  key={metric.key}
+                  metric={metric}
+                  animatedValue={getAnimatedMetricNumber(metric)}
                 />
-              </Col>
-              <Col xs={24} sm={12} style={{ marginTop: 20 }}>
-                <PieInfoCard
-                  title="磁盘使用率"
-                  used={serverInfo.disk.used}
-                  free={serverInfo.disk.free}
-                  unit="GB"
-                />
-              </Col>
-            </Row>
+              ))}
+            </div>
+
+            {/* 历史趋势 */}
+            <Card
+              title="历史趋势"
+              extra={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <Select
+                    style={{ width: 220 }}
+                    value={selectedMetricKey}
+                    onChange={(key) => setSelectedMetricKey(key)}
+                    options={METRIC_OPTIONS}
+                  />
+                  <Segmented
+                    value={selectedRange}
+                    onChange={(range) => setSelectedRange(range as number)}
+                    options={RANGE_OPTIONS}
+                  />
+                </div>
+              }
+            >
+              <Spin spinning={loadingHistory}>
+                <div style={{ position: 'relative', minHeight: 320 }}>
+                  <div ref={containerRef} style={{ height: 320 }} />
+                  {historyPoints.length === 0 && !loadingHistory && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: token.colorBgContainer,
+                          opacity: 0.65,
+                        }}
+                      />
+                      <div style={{ position: 'relative' }}>
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无趋势数据" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Spin>
+            </Card>
           </>
         )}
       </Spin>
