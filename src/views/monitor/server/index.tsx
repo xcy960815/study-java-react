@@ -93,32 +93,44 @@ const ServerPage = () => {
     }
   }, [])
 
-  /** 开始监控：订阅 /topic/server-monitor 实时推送（每 3 秒一次） */
-  const handleStart = async () => {
-    setLoading(true)
-    try {
-      await startServerMonitor()
-      unsubscribeRef.current?.()
-      unsubscribeRef.current = getSharedWebSocketClient().subscribe<ServerInfoVo>(
-        '/topic/server-monitor',
-        (data) => {
-          applyServerInfo(data)
-          setIsMonitoring(true)
-        },
-        (error) => {
-          console.error('WebSocket 错误:', error)
-          message.error('连接失败')
-          setIsMonitoring(false)
-        }
-      )
-      setIsMonitoring(true)
-      message.success('开始监控')
-    } catch {
-      message.error('开始监控失败')
-    } finally {
-      setLoading(false)
-    }
-  }
+  /**
+   * 开始监控：订阅 /topic/server-monitor 实时推送（每 3 秒一次）。
+   * 进场时由 useEffect 自动触发（silent），不打扰提示；
+   * 自动开始失败时页面回到手动「开始监控」按钮态，可点击重试。
+   */
+  const startMonitor = useCallback(
+    async (silent: boolean = false) => {
+      setLoading(true)
+      try {
+        await startServerMonitor()
+        unsubscribeRef.current?.()
+        unsubscribeRef.current = getSharedWebSocketClient().subscribe<ServerInfoVo>(
+          '/topic/server-monitor',
+          (data) => {
+            applyServerInfo(data)
+            setIsMonitoring(true)
+          },
+          (error) => {
+            console.error('WebSocket 错误:', error)
+            if (!silent) message.error('连接失败')
+            setIsMonitoring(false)
+          }
+        )
+        setIsMonitoring(true)
+        if (!silent) message.success('开始监控')
+      } catch {
+        if (!silent) message.error('开始监控失败')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [applyServerInfo]
+  )
+
+  /** 进入页面自动开始监控（静默），无需手动点击。 */
+  useEffect(() => {
+    void startMonitor(true)
+  }, [startMonitor])
 
   /** 按当前指标与时间范围拉取历史趋势并渲染图表。 */
   const refreshHistory = useCallback(async () => {
@@ -172,7 +184,7 @@ const ServerPage = () => {
             <Button
               type="primary"
               icon={<PlayCircleOutlined />}
-              onClick={handleStart}
+              onClick={() => startMonitor(false)}
               loading={loading}
             >
               开始监控
