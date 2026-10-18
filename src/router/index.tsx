@@ -1,7 +1,6 @@
 import { lazy } from 'react'
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import MainLayout from '@/layout/index'
-import { changeTabIcon, changeTabTitle } from '@/utils/system-style'
 import { GuestOnlyRoute, HomeRedirect, RequireAuth, RouteEventBridge } from './route-helpers'
 
 // 路由级代码分割：页面仅在首次访问对应路由时才加载。
@@ -25,8 +24,6 @@ const DataDictionaryList = lazy(() => import('@/views/system/data-dictionary'))
 const MenuList = lazy(() => import('@/views/system/menu'))
 const RoleList = lazy(() => import('@/views/system/role'))
 const UserList = lazy(() => import('@/views/system/user'))
-
-const appTitle = import.meta.env.VITE_APP_TITLE || 'Study Java React'
 
 /** 路由 handle 字段类型定义 */
 export interface RouteHandle {
@@ -243,21 +240,5 @@ const router = createBrowserRouter([
     ],
   },
 ])
-
-router.subscribe((state) => {
-  const matches = state.matches
-  const match = matches[matches.length - 1]
-
-  const iconName = match?.route?.handle?.icon
-  const pageTitle = match?.route?.handle?.title
-
-  if (iconName) {
-    changeTabIcon(iconName as string)
-  } else {
-    changeTabIcon('System')
-  }
-
-  changeTabTitle(pageTitle ? `${String(pageTitle)} - ${appTitle}` : appTitle)
-})
 
 export default router

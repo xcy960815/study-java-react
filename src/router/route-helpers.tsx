@@ -4,6 +4,8 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { eventEmitter } from '@/utils/event-emits'
 import { getToken } from '@/utils/token'
 
+import { RouteTabMetaSync } from './route-tab-sync'
+
 const defaultAuthedPath = '/dashboard'
 
 interface RouteState {
@@ -30,7 +32,12 @@ export const RouteEventBridge = () => {
     }
   }, [navigate])
 
-  return <Outlet />
+  return (
+    <>
+      <RouteTabMetaSync />
+      <Outlet />
+    </>
+  )
 }
 
 /**
