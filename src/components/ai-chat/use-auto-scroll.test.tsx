@@ -99,7 +99,7 @@ describe('useAutoScroll', () => {
     expect(harness.scrollTo.mock.calls.length).toBe(initialCalls + 1)
     const lastCall = harness.scrollTo.mock.calls.at(-1)?.[0] as { top: number; behavior: string }
     expect(lastCall.top).toBe(1000)
-    expect(lastCall.behavior).toBe('smooth')
+    expect(lastCall.behavior).toBe('instant')
 
     harness.unmount()
   })
