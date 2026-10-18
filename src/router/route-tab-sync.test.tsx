@@ -92,12 +92,38 @@ describe('RouteTabMetaSync', () => {
     shell.cleanup()
   })
 
-  it('叶子路由无 handle.icon 时回退 System 图标并以应用名作为标题', () => {
+  it('叶子路由无 handle.icon 时 favicon 保持不变并以应用名作为标题', () => {
+    // 预置一个哨兵 favicon，断言未被任何后续解析覆盖
+    const sentinel = document.createElement('link')
+    sentinel.rel = 'shortcut icon'
+    sentinel.href = 'data:image/svg+xml;base64,SENTINELPLIER'
+    document.head.appendChild(sentinel)
+
     const shell = mountRouterShell('/plain')
 
     const state = readTabState()
     expect(state.title).toBe('Study Java React')
     expect(state.iconLinks).toContain('shortcut icon')
+    expect((document.querySelector("link[rel*='icon']") as HTMLLinkElement).href).toContain(
+      'SENTINELPLIER'
+    )
+
+    shell.cleanup()
+  })
+
+  it('注册表未收录的 handle.icon 同样不切换 favicon', () => {
+    const sentinel = document.createElement('link')
+    sentinel.rel = 'shortcut icon'
+    sentinel.href = 'data:image/svg+xml;base64,SENTINELPLIER'
+    document.head.appendChild(sentinel)
+
+    const shell = mountRouterShell('/ghost-name')
+
+    const state = readTabState()
+    expect(state.iconLinks).toContain('shortcut icon')
+    expect((document.querySelector("link[rel*='icon']") as HTMLLinkElement).href).toContain(
+      'SENTINELPLIER'
+    )
 
     shell.cleanup()
   })

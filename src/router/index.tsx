@@ -57,22 +57,26 @@ export const layoutRoutes: RouteObject[] = [
       {
         path: 'user',
         element: <UserList />,
-        handle: { icon: 'User', title: '用户管理', requiredPermission: 'system:user:query' },
+        handle: { icon: 'AddressBook', title: '用户管理', requiredPermission: 'system:user:query' },
       },
       {
         path: 'role',
         element: <RoleList />,
-        handle: { icon: 'User', title: '角色管理', requiredPermission: 'system:role:query' },
+        handle: { icon: 'Permissions', title: '角色管理', requiredPermission: 'system:role:query' },
       },
       {
         path: 'menu',
         element: <MenuList />,
-        handle: { icon: 'Menu', title: '菜单管理', requiredPermission: 'system:menu:query' },
+        handle: {
+          icon: 'ApplicationMenu',
+          title: '菜单管理',
+          requiredPermission: 'system:menu:query',
+        },
       },
       {
         path: 'data-dictionary',
         element: <DataDictionaryList />,
-        handle: { icon: 'Book', title: '数据字典' },
+        handle: { icon: 'Bookmark', title: '数据字典' },
       },
       {
         index: true,
@@ -88,12 +92,12 @@ export const layoutRoutes: RouteObject[] = [
       {
         path: 'server',
         element: <ServerPage />,
-        handle: { icon: 'Line', title: '服务监控' },
+        handle: { icon: 'TrendTwo', title: '服务监控' },
       },
       {
         path: 'report',
         element: <ReportPage />,
-        handle: { icon: 'Bar', title: '经营报表' },
+        handle: { icon: 'ChartLine', title: '经营报表' },
       },
       {
         index: true,
@@ -105,16 +109,16 @@ export const layoutRoutes: RouteObject[] = [
   {
     path: 'order',
     element: <OrderPage />,
-    handle: { icon: 'ShoppingCart', title: '订单管理', requiredPermission: 'order:query' },
+    handle: { icon: 'Order', title: '订单管理', requiredPermission: 'order:query' },
   },
   {
     path: 'goods',
-    handle: { icon: 'Shop', title: '商品' },
+    handle: { icon: 'Commodity', title: '商品' },
     children: [
       {
         path: 'list',
         element: <GoodsPage />,
-        handle: { icon: 'Shop', title: '商品列表', requiredPermission: 'goods:query' },
+        handle: { icon: 'ListView', title: '商品列表', requiredPermission: 'goods:query' },
       },
       {
         path: 'category',
@@ -136,21 +140,21 @@ export const layoutRoutes: RouteObject[] = [
   {
     path: 'password',
     element: <PasswordPage />,
-    handle: { icon: 'Lock', title: '修改密码', hidden: true },
+    handle: { icon: 'password', title: '修改密码', hidden: true },
   },
   {
     path: 'deepseek',
-    handle: { icon: 'Robot', title: 'DeepSeek' },
+    handle: { icon: 'Brain', title: 'DeepSeek' },
     children: [
       {
         path: 'models',
         element: <DeepSeekModelsPage />,
-        handle: { icon: 'Robot', title: '模型列表' },
+        handle: { icon: 'Brain', title: '模型列表' },
       },
       {
         path: 'chat',
         element: <DeepSeekChatPage />,
-        handle: { icon: 'Robot', title: '对话' },
+        handle: { icon: 'Wechat', title: '对话' },
       },
       {
         index: true,
@@ -161,17 +165,17 @@ export const layoutRoutes: RouteObject[] = [
   },
   {
     path: 'upload',
-    handle: { icon: 'Upload', title: '文件上传' },
+    handle: { icon: 'InboxUploadR', title: '文件上传' },
     children: [
       {
         path: 'file',
         element: <FileUploadPage />,
-        handle: { icon: 'Upload', title: '文件上传' },
+        handle: { icon: 'UploadTwo', title: '文件上传' },
       },
       {
         path: 'large-file',
         element: <LargeFileUploadPage />,
-        handle: { icon: 'Upload', title: '大文件上传' },
+        handle: { icon: 'UploadThree', title: '大文件上传' },
       },
       {
         index: true,
@@ -182,12 +186,16 @@ export const layoutRoutes: RouteObject[] = [
   },
   {
     path: 'lab',
-    handle: { icon: 'Flask', title: 'Java 实验室' },
+    handle: { icon: 'Cpu', title: 'Java 实验室' },
     children: [
       {
         path: 'virtual-threads',
         element: <VirtualThreadsLabPage />,
-        handle: { icon: 'Bar', title: '虚拟线程基准', requiredPermission: 'monitor:vthread:query' },
+        handle: {
+          icon: 'Histogram',
+          title: '虚拟线程基准',
+          requiredPermission: 'monitor:vthread:query',
+        },
       },
       {
         index: true,

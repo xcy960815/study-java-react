@@ -27,11 +27,8 @@ export const RouteTabMetaSync = () => {
     const iconName = handle?.icon
     const pageTitle = handle?.title
 
-    if (iconName) {
-      changeTabIcon(iconName)
-    } else {
-      changeTabIcon('System')
-    }
+    // 未注册 / 无 icon 的路由保持现有 favicon 不变（Vue 同语义），内部已三级求解。
+    changeTabIcon(iconName)
 
     changeTabTitle(pageTitle ? `${pageTitle} - ${appTitle}` : appTitle)
   }, [leaf])
