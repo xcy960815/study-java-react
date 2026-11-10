@@ -1,11 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { RouterProvider } from 'react-router-dom'
-import router from './router'
+import App from './App'
+import { createAppRouter } from './router'
 import './index.css'
+
+// 在 React 渲染之外创建，避免 StrictMode / Suspense 重试产生废弃的路由实例。
+const router = createAppRouter()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <App initialRouter={router} />
   </StrictMode>
 )

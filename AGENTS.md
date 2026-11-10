@@ -31,9 +31,12 @@ Notes for agents:
 
 ## High-Value Paths
 
-- `src/router/index.tsx` defines app routes, page metadata, hidden menu entries, and tab title/icon updates.
-- `src/router/route-helpers.tsx` contains auth guards and session-ending route events.
-- `src/layout/index.tsx` generates the sidebar menu from `layoutRoutes`.
+- `src/router/index.tsx` defines the static shell (login/register/layout/404), layout route id, and `patchRoutesOnNavigation` deep-link hook.
+- `src/router/ensure-dynamic-routes.ts` is the idempotent registrar: `getRoutes` + `buildRoute` + `router.patchRoutes`.
+- `src/utils/build-route.tsx` maps backend menu trees to React Router children.
+- `src/router/route-helpers.tsx` contains token/guest guards only; session-end router reset lives in `src/App.tsx`.
+- `src/layout/index.tsx` generates the sidebar menu from the backend route tree (plus static shell entries such as dashboard).
+- `src/store/modules/system.ts` owns `hasAddedRoutes` and the backend route tree.
 - `src/utils/request.ts` is the shared Axios instance with auth headers, token refresh, and error handling.
 - `src/utils/token.ts` owns token storage keys and helpers.
 - `src/utils/websocket.ts` is the shared STOMP/SockJS client (server-monitor push + order-paid notifications).
@@ -47,7 +50,7 @@ Notes for agents:
 
 1. Read the relevant route, page, API, store, and utility files before editing.
 2. Keep changes small and aligned with existing Ant Design, Tailwind utility classes, route handles, and API wrapper style.
-3. For new pages, add the page under `src/views/`, wire it in `layoutRoutes`, and update icon mapping in `src/layout/index.tsx` if a new menu icon name is needed.
+3. For new pages, add the page under `src/views/` with a path that `src/utils/build-route.tsx` can resolve from the backend `component` field, and add a matching menu in the backend; update the shared icon mapping if needed. `staticLayoutRoutes` retains dashboard, profile, password, and the user-approved Vue-compatible system/monitor modules. Other business pages stay backend-driven. Merge duplicate directories and patch new backend children into their resident parents; do not discard the entire backend branch.
 4. For backend calls, add or update a typed wrapper in `src/apis/` and call the shared `request` instance.
 5. For auth/session behavior, trace `src/utils/request.ts`, `src/utils/token.ts`, `src/utils/event-emits.ts`, and `src/router/route-helpers.tsx` together.
 6. Add regression tests with the configured Vitest runner (see .agents/testing.md); keep utility tests beside the source as `*.test.ts`.
@@ -75,3 +78,4 @@ Notes for agents:
 - Environment variables are loaded from `env/`, not root `.env`, because `vite.config.ts` sets `envDir: 'env'`.
 - The app assumes backend API compatibility with the endpoint paths under `src/apis/`; this repo does not include the backend — the Java backend lives at `/Users/opera/Documents/my-repositories/study-java`.
 - Keep route `handle.title`, `handle.icon`, and `handle.hidden` accurate because they drive menus and browser tab behavior.
+- Dynamic route `component` values from the backend should resolve to files under `src/views/**` (`.vue` suffixes are mapped to `.tsx`). Values containing `layout` use the resident `MainLayout` and must not wrap a second shell.

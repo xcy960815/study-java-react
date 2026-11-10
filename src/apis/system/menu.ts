@@ -92,3 +92,12 @@ export const updateMenu = (data: MenuDto): Promise<boolean> => {
 export const deleteMenu = (data: MenuDto): Promise<boolean> => {
   return request.delete('/studyJavaSysMenu/deleteMenu', { data })
 }
+
+/**
+ * 获取当前登录用户所拥有的路由列表。
+ *
+ * @returns 用户可见的路由菜单（后端按权限过滤，可能是扁平列表或已带 children 的树）
+ */
+export const getRoutes = (): Promise<MenuVo[]> => {
+  return request.get('/studyJavaSysMenu/getRoutes')
+}

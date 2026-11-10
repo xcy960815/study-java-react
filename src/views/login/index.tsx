@@ -140,7 +140,7 @@ const Login: React.FC = () => {
               form={form}
               name="loginForm"
               onFinish={handleLogin}
-              initialValues={{ rememberMe: false }}
+              initialValues={{ username: '13700002703', password: '123456', rememberMe: false }}
               size="large"
               layout="vertical"
             >

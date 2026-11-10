@@ -9,6 +9,7 @@ import { hasPermission } from '@/utils/permission'
 
 /** 进行中的用户信息请求，用于并发调用去重 */
 let currentUserPromise: Promise<UserInfoVo> | null = null
+let userGeneration = 0
 
 /**
  * 登录模块对外暴露的动作集合。
@@ -23,6 +24,7 @@ interface LoginActions {
   logout: () => Promise<void>
   loadCurrentUser: () => Promise<UserInfoVo>
   hasPermission: (permission: string) => boolean
+  resetUser: () => void
 }
 
 /**
@@ -33,6 +35,11 @@ export const useLoginStore = create<LoginActions>((set, get) => ({
   user: null,
   userLoading: false,
   userLoaded: false,
+  resetUser: () => {
+    userGeneration += 1
+    currentUserPromise = null
+    set({ user: null, userLoaded: false, userLoading: false })
+  },
   login: async (loginData: LoginRequestDto) => {
     const response = await loginModule.login(loginData)
     message.success('登入成功')
@@ -40,7 +47,7 @@ export const useLoginStore = create<LoginActions>((set, get) => ({
     setToken(token)
     setRefreshToken(refreshToken)
     // 用户及权限由受保护的 /user/getUserInfo 统一获取，避免登录响应字段不完整。
-    set({ user: null, userLoaded: false })
+    get().resetUser()
     eventEmitter.emit('login')
   },
 
@@ -57,7 +64,7 @@ export const useLoginStore = create<LoginActions>((set, get) => ({
         message.success('退出成功')
       }
       clearAuthTokens()
-      set({ user: null, userLoaded: false })
+      get().resetUser()
       eventEmitter.emit('logout')
     }
   },
@@ -70,15 +77,18 @@ export const useLoginStore = create<LoginActions>((set, get) => ({
     if (currentUserPromise) {
       return currentUserPromise
     }
+    const currentGeneration = userGeneration
     currentUserPromise = (async () => {
       set({ userLoading: true })
       try {
         const user = await getCurrentUser()
-        set({ user, userLoaded: true })
+        if (currentGeneration === userGeneration) set({ user, userLoaded: true })
         return user
       } finally {
-        set({ userLoading: false, userLoaded: true })
-        currentUserPromise = null
+        if (currentGeneration === userGeneration) {
+          set({ userLoading: false, userLoaded: true })
+          currentUserPromise = null
+        }
       }
     })()
     return currentUserPromise

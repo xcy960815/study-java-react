@@ -26,74 +26,19 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { useLoginStore, useThemeStore } from '@/store'
-import { layoutRoutes } from '@/router'
-import type { RouteHandle } from '@/router'
-import type { RouteObject } from 'react-router-dom'
+import { useLoginStore, useSystemStore, useThemeStore } from '@/store'
+import { staticLayoutRoutes } from '@/router/static-routes'
 import type { ItemType } from 'antd/es/menu/interface'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { useOrderNotifications } from '@/hooks/useOrderNotifications'
 import { useResolvedIsDark } from '@/hooks/useResolvedTheme'
 import { hasPermission } from '@/utils/permission'
-import { getMenuIcon } from '@/utils/route-icons'
 import NotificationBell from '@/components/notification-bell'
 import UpdateIndicator from '@/components/update-indicator'
 import ThemeSettingsDrawer from '@/components/theme-settings'
+import { buildMenuItems } from './menu-items'
 
 const { Header, Sider, Content } = Layout
-
-/**
- * 根据路由配置自动生成菜单项
- * 仅渲染 handle 中包含 title 且 hidden 不为 true 的路由
- */
-const generateMenuItems = (
-  routes: RouteObject[],
-  permissions: string[],
-  parentPath = ''
-): ItemType[] => {
-  return routes
-    .filter((route) => {
-      const handle = route.handle as RouteHandle | undefined
-      return (
-        handle?.title &&
-        !handle?.hidden &&
-        (!handle.requiredPermission || hasPermission(permissions, handle.requiredPermission))
-      )
-    })
-    .map((route) => {
-      const handle = route.handle as RouteHandle | undefined
-      const fullPath = `${parentPath}/${route.path}`
-      const children = 'children' in route ? route.children : undefined
-      const visibleChildren = children?.filter((child) => {
-        const h = child.handle as RouteHandle | undefined
-        return (
-          h?.title &&
-          !h?.hidden &&
-          (!h.requiredPermission || hasPermission(permissions, h.requiredPermission))
-        )
-      })
-
-      if (visibleChildren && visibleChildren.length > 0) {
-        return {
-          key: fullPath,
-          icon: getMenuIcon(handle?.icon),
-          label: handle!.title,
-          children: generateMenuItems(visibleChildren, permissions, fullPath),
-        }
-      }
-
-      // 子路由存在但全部被权限过滤：整组菜单隐藏
-      if (children && visibleChildren?.length === 0) {
-        return null
-      }
-
-      return {
-        key: fullPath,
-        icon: getMenuIcon(handle?.icon),
-        label: handle!.title,
-      }
-    })
-}
 
 /** 计算当前是否应使用暗色主题 */
 const MainLayout: React.FC = () => {
@@ -108,6 +53,8 @@ const MainLayout: React.FC = () => {
   const resolvedPrimaryColor = isDark ? primaryColors.dark : primaryColors.light
   const { fullscreen, toggleFullscreen } = useFullscreen()
 
+  const backendRoutes = useSystemStore((state) => state.routes)
+
   useEffect(() => {
     // 失败提示由 request 拦截器统一弹出，这里无需重复提示。
     void loadCurrentUser().catch(() => undefined)
@@ -121,7 +68,6 @@ const MainLayout: React.FC = () => {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login')
   }
 
   /** 头像下拉菜单：个人中心 / 修改密码 / 个性化设置 / 退出登录 */
@@ -167,10 +113,10 @@ const MainLayout: React.FC = () => {
     { key: 'login-out', icon: <LogoutOutlined />, label: '退出登录', danger: true },
   ]
 
-  /** 从路由配置动态生成的菜单项 */
+  /** 常驻系统模块 + 后端业务菜单，目录和子页分别按完整路径合并。 */
   const menuItems = useMemo(
-    () => generateMenuItems(layoutRoutes, user?.permissions || []),
-    [user?.permissions]
+    () => buildMenuItems(staticLayoutRoutes, backendRoutes, user?.permissions || []),
+    [backendRoutes, user?.permissions]
   )
 
   /** 系统深色偏好的监听由 useResolvedIsDark 内部处理（跟随系统模式） */

@@ -7,7 +7,7 @@ Vitest 5 + jsdom unit testing is configured (added alongside the order-workflow 
 - Runner: `pnpm test` (`vitest run`); watch mode via `pnpm vitest` if needed.
 - Config: `vitest.config.ts` (standalone, does NOT merge `vite.config.ts` to avoid build plugins); it re-declares the `@` → `./src` alias and runs in the `jsdom` environment.
 - Test files live beside the source as `*.test.ts` / `*.test.tsx` and must import `describe`/`it`/`expect`/`vi` explicitly from `vitest`.
-- Existing coverage: `src/utils/order-workflow.test.ts` (place-order validation, payment idempotency keys, legal actions per status, checkout draft) `src/utils/dashboard-stats.test.ts` (greeting buckets, order-status pie data, stock TOP N), and `src/utils/notification.test.ts` (relative time formatting, order-paid notification content, notification route mapping).
+- Existing coverage includes `src/utils/order-workflow.test.ts`, `src/utils/dashboard-stats.test.ts`, `src/utils/notification.test.ts`, `src/utils/build-route.test.ts` (menu tree + route building), `src/router/ensure-dynamic-routes.test.ts` (per-instance registration, cancellation, reset), `src/router/ensure-dynamic-routes.strict-mode.test.ts` (actual browser-router discovery/deep links/retry), `src/App.test.tsx` (StrictMode and Provider replacement), and `src/store/modules/login.test.ts` (late user responses across sessions).
 - CI (`.github/workflows/quality.yml`) runs lint, `pnpm test`, and the production build.
 
 ## Existing Validation Commands
@@ -46,7 +46,7 @@ Tests use the configured Vitest runner; add tests in the same change as the beha
 
 Conventions:
 
-- Utility tests beside the source file as `*.test.ts`; component tests as `*.test.tsx` (React Testing Library is not installed yet — add it with pnpm before writing component tests).
+- Utility tests beside the source file as `*.test.ts`; component tests as `*.test.tsx`, using `@testing-library/react`. Use `act` for externally emitted session events or imperative router navigation and clean up mounted trees and router instances after each test.
 - Import test APIs explicitly: `import { beforeEach, describe, expect, it, vi } from 'vitest'` (there is no ambient test types setup; `tsc -b` typechecks test files against these imports).
 - jsdom provides `sessionStorage`/`localStorage` — clear them in `beforeEach`; stub `crypto.randomUUID` with `vi.stubGlobal` for deterministic ids.
 - Keep tests off the network: exercise pure helpers (e.g. `@/utils/order-workflow`) rather than Axios wrappers.
@@ -54,7 +54,7 @@ Conventions:
 Good first regression targets:
 
 - `src/router/route-helpers.tsx`: redirects for logged-in/logged-out users.
-- `src/layout/index.tsx`: menu generation from `layoutRoutes`.
+- `src/layout/index.tsx`: menu generation from the backend route tree plus static shell routes.
 - `src/utils/token.ts`: token storage helpers with mocked `localStorage`.
 - `src/utils/request.ts`: authorization header, refresh queue, invalid-session behavior with mocked Axios/backend.
 
@@ -65,3 +65,7 @@ Good first regression targets:
 3. For route, API, auth, or build-plugin changes, run `pnpm lint:ci`, `pnpm test`, and `pnpm build:prod`.
 4. When changing tested utilities (currently `src/utils/order-workflow.ts`), extend or update the adjacent `*.test.ts` in the same change.
 5. Keep regression tests focused on the behavior that broke or could break.
+
+Dynamic-route regression must include a cold business deep link without App's supplemental ensure, cancellation while menus are loading, separate router instances sharing one menu request, retry after getRoutes failure, and logout/token-invalid followed by login. Verify the rendered page as well as the URL: RouterProvider can retain old state if its instance changes without a key change.
+
+Resident system/monitor regression lives in `src/layout/menu-items.test.ts`, `src/router/route-patches.test.ts`, and the browser-router discovery tests. Cover all six resident pages without getRoutes, duplicate backend directories/leaves, extra dynamic children, and hidden-page menu suppression.
